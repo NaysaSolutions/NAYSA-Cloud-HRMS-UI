@@ -1,0 +1,1566 @@
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:opsz,wght@8..144,400;8..144,900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN TOKENS — Minimalist ERP system
+   Single source of truth for color, radius, shadow, motion.
+   ============================================================ */
+
+  :root {
+  /* Neutrals — slate tinted toward the accent blue */
+  --erp-bg:           #F9FAFB;
+  --erp-surface:      #FFFFFF;
+  --erp-surface-2:    #EEF2FA;
+  --erp-border:        #E3E8F2;
+  --erp-border-strong: #C7CFE2;
+
+  --erp-text:         #0B1330;
+  --erp-text-muted:   #3E4A78;
+  --erp-text-faint:   #6E7AAA;
+
+  /* Brand — one blue, used with restraint */
+  --erp-accent:        #2150D6;
+  --erp-accent-hover:  #1A3FB0;
+  --erp-accent-soft:   #EAF0FC;
+  --erp-accent-border: #D4DEF5;
+
+  /* Status — desaturated, not candy-colored */
+  --erp-success:      #1A7F4E;
+  --erp-success-soft: #EAF7F1;
+  --erp-danger:        #C8372E;
+  --erp-danger-hover:  #A82C24;
+  --erp-danger-soft:   #FBEAE9;
+  --erp-warning:       #9A6B12;
+  --erp-warning-soft:  #FBF3E3;
+  --erp-indigo:        #5B4BD6;
+  --erp-indigo-soft:   #F0EEFC;
+
+  /* Geometry */
+  --erp-radius-sm: 6px;
+  --erp-radius:    10px;
+  --erp-radius-lg: 14px;
+
+  /* Elevation — neutral, slate-tinted shadow (more enterprise, less "toy") */
+  --erp-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --erp-shadow:    0 2px 6px rgba(15, 23, 42, 0.08);
+  --erp-shadow-lg: 0 10px 24px rgba(15, 23, 42, 0.14);
+
+  /* Motion */
+  --erp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --erp-fast: 140ms;
+  --erp-base: 200ms;
+
+  /* Layout / spacing — single source of truth for alignment */
+  --erp-page-x: clamp(0.25rem, 1.8vw, 0.25rem);
+  --erp-header-height: 44px;
+  --erp-header-gap: 1rem;
+  --erp-content-top: calc(var(--erp-header-height) + var(--erp-header-gap) + 0.50rem);
+  --erp-table-row-height: 34px;
+}
+
+.dark {
+  --erp-bg:            #08090C;
+  --erp-surface:       #111214;
+  --erp-surface-2:     #16181C;
+  --erp-border:        #232529;
+  --erp-border-strong: #2E3137;
+
+  --erp-text:          #ECEDEF;
+  --erp-text-muted:    #9A9DA6;
+  --erp-text-faint:    #6B6E78;
+
+  --erp-accent:        #5B82E8;
+  --erp-accent-hover:  #7194ED;
+  --erp-accent-soft:   #161A24;
+  --erp-accent-border: #232A3A;
+
+  --erp-success:       #3FB07E;
+  --erp-success-soft:  #102420;
+  --erp-danger:        #E2625B;
+  --erp-danger-hover:  #EA756F;
+  --erp-danger-soft:   #2A1716;
+  --erp-warning:       #D6A53F;
+  --erp-warning-soft:  #2A2210;
+  --erp-indigo:        #8A7BF0;
+  --erp-indigo-soft:   #1C1A33;
+
+  --erp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --erp-shadow:    0 2px 8px rgba(0, 0, 0, 0.45);
+  --erp-shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.55);
+
+  --erp-surface-glass: rgba(17, 18, 20, 0.86);
+  --erp-row-hover:     #16181C;
+  --erp-row-selected:  #181B22;
+  --erp-row-zebra:     #0D0E10;
+  --erp-input-bg:      #111214;
+  --erp-input-disabled:#1A1B1F;
+  --erp-ring:          rgba(91, 130, 232, 0.22);
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: var(--erp-bg);
+  color: var(--erp-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.oswald-text { font-family: 'Oswald', sans-serif; }
+.nowrap-header { white-space: nowrap; }
+
+@layer components {
+
+  /* ============================================================
+     TRANSACTION HEADER UI
+     ============================================================ */
+
+  .global-tran-main-div-ui {
+    @apply p-2 min-h-screen;
+    background-color: var(--erp-bg);
+    padding-left: var(--erp-page-x);
+    padding-right: var(--erp-page-x);
+    margin-top: var(--erp-content-top);
+  }
+
+  .global-tran-headerToolbar-ui {
+    @apply sticky top-0 z-40;
+  }
+
+  .global-tran-header-div-ui,
+  .global-tran-subheader-div-ui {
+    @apply rounded-lg p-2;
+    background-color: var(--erp-surface);
+    box-shadow: var(--erp-shadow-sm);
+    border: 1px solid var(--erp-border);
+    margin-top: var(--erp-header-gap);
+  }
+  .global-tran-header-div-ui { margin-top: var(--erp-content-top); }
+
+  /* Flat, quiet header bar — no gradient, a single accent-tinted surface */
+  .global-tran-header-ui {
+    @apply fixed mt-24 top-12 z-30 p-1 rounded-lg flex flex-col
+            sm:flex-row sm:justify-between sm:items-center gap-y-1 sm:gap-y-0 sm:gap-x-4;
+    top: var(--erp-page-x);
+    left: var(--erp-page-x);
+    right: var(--erp-page-x);
+    min-height: var(--erp-header-height);
+    margin-bottom: 0;
+    background-color: var(--erp-accent-soft);
+    border: 1px solid var(--erp-accent-border);
+    color: var(--erp-accent);
+    box-shadow: var(--erp-shadow-sm);
+  }
+
+  .global-tran-headertext-div-ui { @apply text-center sm:text-left; }
+
+  .global-tran-headertext-ui {
+    @apply text-base sm:text-xl lg:text-2xl font-semibold pl-3;
+    letter-spacing: -0.02em;
+  }
+
+  /* TRANSACTION STATUS UI */
+
+  .global-tran-headerstat-div-ui {
+    @apply flex flex-col sm:flex-row gap-y-1 sm:gap-x-5 items-center sm:items-start text-center sm:text-left pr-2 sm:pr-4;
+  }
+
+  .global-tran-headerstat-text-ui {
+    @apply text-xs sm:text-xs lg:text-sm font-semibold text-center;
+    color: var(--erp-text-muted);
+  }
+
+  .global-tran-stat-text-ui { @apply text-sm sm:text-sm lg:text-base font-bold text-center; }
+  .global-tran-stat-text-closed-ui    { color: var(--erp-danger); }
+  .global-tran-stat-text-finalized-ui { color: var(--erp-accent); }
+  .global-tran-stat-text-open-ui      { color: var(--erp-text-muted); }
+
+  /* TRANSACTION TABS UI */
+
+  .global-tran-header-tab-div-ui {
+    @apply flex text-sm mb-2 justify-center lg:justify-start;
+    border-bottom: 1px solid var(--erp-border);
+  }
+
+  .global-tran-tab-padding-ui { @apply py-1 px-2; }
+
+  .global-tran-tab-text_active-ui {
+    @apply flex text-sm lg:text-base font-semibold;
+    color: var(--erp-accent);
+    border-bottom: 2px solid var(--erp-accent);
+  }
+
+  .global-tran-tab-text_inactive-ui {
+    @apply text-sm lg:text-base font-medium;
+    color: var(--erp-text-faint);
+  }
+
+  .global-tran-tab-div-ui {
+    @apply rounded-lg p-4;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    box-shadow: var(--erp-shadow-sm);
+    margin-top: var(--erp-header-gap);
+    margin-bottom: var(--erp-header-gap);
+  }
+
+  .global-tran-tab-nav-ui {
+    @apply flex flex-col justify-center sm:flex-row sm:items-center md:justify-between mb-2 text-sm sm:text-base lg:text-base gap-2 sm:gap-0;
+  }
+
+  /* TRANSACTION LOOKUP / ACTION BUTTONS — flat, single accent, no gradients */
+
+  .global-tran-button-lookup,
+  .global-tran-button-generateGL {
+    @apply text-white font-medium px-14 sm:px-16 p-2 rounded-md text-sm sm:text-xs
+            flex items-center justify-center focus:outline-none focus-visible:ring-2 w-full sm:w-auto mr-2
+            transition-colors;
+    background-color: var(--erp-accent);
+    transition-duration: var(--erp-fast);
+  }
+  .global-tran-button-lookup:hover,
+  .global-tran-button-generateGL:hover { background-color: var(--erp-accent-hover); }
+
+  .global-tran-spinner-main-div-ui {
+    @apply fixed inset-0 flex items-center justify-center z-50;
+    background-color: rgba(11, 13, 17, 0.35);
+    backdrop-filter: blur(2px);
+  }
+
+  .global-tran-spinner-sub-div-ui {
+    @apply p-6 rounded-lg flex flex-col items-center;
+    background-color: var(--erp-surface);
+    color: var(--erp-text);
+    box-shadow: var(--erp-shadow-lg);
+  }
+
+  /* TRANSACTION TEXTBOX UI */
+
+  .global-tran-textbox-group-div-ui { @apply space-y-4 p-2; }
+
+  .global-tran-textbox-ui {
+    @apply block w-full appearance-none rounded-md px-2 pb-1 pt-2 text-xs
+            focus:outline-none focus:ring-0 h-[30px] sm:h-[30px] lg:h-[35px] cursor-pointer transition-colors;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border-strong);
+    color: var(--erp-text);
+  }
+  .global-tran-textbox-ui:focus { border-color: var(--erp-accent); }
+
+  .global-tran-textbox-remarks-ui {
+    @apply block w-full appearance-none px-2 pb-2 rounded-md focus:outline-none focus:ring-0 !important;
+    @apply text-[10px] sm:text-[12px] min-h-24 !important;
+    background-color: var(--erp-surface) !important;
+    border: 1px solid var(--erp-border) !important;
+    color: var(--erp-text);
+  }
+  .global-tran-textbox-remarks-ui:focus { border-color: var(--erp-accent) !important; }
+
+  .global-tran-textbox-remarks-ui-disabled {
+    @apply block w-full appearance-none px-2 pb-2 rounded-md !important;
+    @apply text-[10px] sm:text-[12px] min-h-24 cursor-not-allowed !important;
+    background-color: var(--erp-surface-2) !important;
+    border: 1px solid var(--erp-border) !important;
+    color: var(--erp-text-muted) !important;
+    opacity: 1 !important;
+  }
+
+  .global-tran-textbox-button-search-padding-ui {
+    @apply w-[40px] h-[30px] sm:h-[30px] lg:h-[35px] absolute inset-y-0 right-0;
+  }
+  .global-tran-textbox-button-search-enabled-ui  { background-color: var(--erp-accent); }
+  .global-tran-textbox-button-search-enabled-ui:hover  { background-color: var(--erp-accent-hover); }
+  .global-tran-textbox-button-search-disabled-ui { background-color: var(--erp-border-strong); }
+
+  .global-tran-textbox-button-search-ui {
+    @apply text-white rounded-r-md flex items-center justify-center focus:outline-none transition-colors;
+    transition-duration: var(--erp-fast);
+  }
+
+  .global-tran-floating-label {
+    @apply absolute start-1 top-2.5 z-10 origin-[0] -translate-y-5 scale-75 transform px-2 text-sm transition-all
+            peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100
+            peer-focus:top-2 peer-focus:-translate-y-5 peer-focus:scale-75;
+    background-color: var(--erp-surface);
+    color: var(--erp-text-muted);
+  }
+  .global-tran-floating-label.peer-focus,
+  .peer:focus ~ .global-tran-floating-label { color: var(--erp-accent); }
+
+  .global-tran-floating-label-remarks,
+  .global-tran-floating-label-remarks-disabled {
+    @apply absolute left-3 top-0 z-10 origin-[0] scale-75 transform rounded-lg px-2 text-xs sm:text-sm transition-all
+            peer-placeholder-shown:top-4 peer-placeholder-shown:scale-100 peer-focus:top-0 peer-focus:scale-75;
+    background-color: var(--erp-surface);
+    color: var(--erp-text-muted);
+  }
+  .global-tran-floating-label-remarks-disabled { background-color: var(--erp-surface-2); }
+
+  .global-tran-asterisk-ui { color: var(--erp-danger); @apply font-bold; }
+
+  /* TRANSACTION TABLE UI */
+
+  .global-tran-table-main-div-ui {
+    @apply overflow-x-auto rounded-lg;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    box-shadow: var(--erp-shadow-sm);
+  }
+
+  .global-tran-table-main-sub-div-ui { @apply max-h-[360px] overflow-y-auto relative; }
+  .global-tran-table-div-ui { @apply min-w-full border-collapse; }
+
+  .global-tran-thead-div-ui {
+    @apply sticky top-0 z-10;
+    background-color: var(--erp-surface-2);
+  }
+
+  .global-tran-th-ui {
+    @apply px-2 py-2 text-center text-[10px] sm:text-[10px] lg:text-xs font-semibold cursor-pointer whitespace-nowrap;
+    color: var(--erp-text-muted);
+    border-bottom: 1px solid var(--erp-border);
+    letter-spacing: 0.03em;
+  }
+
+  .global-tran-tr-ui {
+    @apply h-[32px] min-h-[32px] transition-colors;
+    border-bottom: 1px solid var(--erp-border);
+    transition-duration: var(--erp-fast);
+  }
+  .global-tran-tr-ui:hover { background-color: var(--erp-accent-soft); }
+
+  .global-tran-td-ui {
+    @apply h-[32px] min-h-[32px] px-3 py-[2px] text-[10px] sm:text-[10px] lg:text-xs whitespace-normal align-middle;
+    border-right: 1px solid var(--erp-border);
+    color: var(--erp-text);
+  }
+
+  .global-tran-td-inputclass-ui {
+    @apply h-[26px] min-h-[26px] bg-transparent focus:outline-none focus:ring-0 whitespace-normal;
+  }
+
+  .global-tran-td-button-add-ui {
+    @apply flex-1 h-[26px] min-h-[26px] md:flex-none flex items-center justify-center gap-1 px-2 rounded-md text-xs transition-colors;
+    background-color: var(--erp-accent-soft);
+    border: 1px solid var(--erp-accent-border);
+    color: var(--erp-accent);
+    transition-duration: var(--erp-fast);
+  }
+  .global-tran-td-button-add-ui:hover { background-color: var(--erp-accent); color: #fff; border-color: var(--erp-accent); }
+
+  .global-tran-td-button-delete-ui {
+    @apply flex-1 h-[26px] min-h-[26px] md:flex-none flex items-center justify-center gap-1 px-2 rounded-md text-xs transition-colors;
+    background-color: var(--erp-danger-soft);
+    border: 1px solid var(--erp-danger-soft);
+    color: var(--erp-danger);
+    transition-duration: var(--erp-fast);
+  }
+  .global-tran-td-button-delete-ui:hover { background-color: var(--erp-danger); color: #fff; }
+
+  /* TRANSACTION TAB FOOTER UI */
+
+  .global-tran-tab-footer-main-div-ui {
+    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between mt-8 gap-4 sm:gap-0;
+  }
+  .global-tran-tab-footer-button-div-ui { @apply flex justify-center sm:justify-start; }
+
+  .global-tran-tab-footer-button-add-ui {
+    @apply text-white font-medium px-4 py-2 text-sm rounded-md flex items-center justify-center
+            focus:outline-none w-full sm:w-auto transition-colors;
+    background-color: var(--erp-accent);
+    transition-duration: var(--erp-fast);
+  }
+  .global-tran-tab-footer-button-add-ui:hover { background-color: var(--erp-accent-hover); }
+
+  .global-tran-tab-footer-total-main-div-ui {
+    @apply flex flex-col sm:flex-row sm:flex-wrap sm:justify-end gap-2 sm:gap-x-6 p-2;
+  }
+  .global-tran-tab-footer-total-div-ui { @apply flex justify-between sm:items-center sm:gap-2; }
+  .global-tran-tab-footer-total-label-ui { @apply text-sm font-semibold; color: var(--erp-text-muted); }
+  .global-tran-tab-footer-total-value-ui { @apply text-sm font-bold text-right; color: var(--erp-text); }
+
+  @keyframes bounce-slow {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+  .animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
+
+  /* ============================================================
+     REFERENCE FILES & MASTERDATA
+     ============================================================ */
+
+  .global-ref-main-div-ui {
+    @apply p-2 min-h-screen;
+    background-color: var(--erp-bg);
+    padding-left: var(--erp-page-x);
+    padding-right: var(--erp-page-x);
+  }
+
+  .global-ref-tab-div-ui {
+    @apply p-4 sm:p-6 rounded-lg;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    box-shadow: var(--erp-shadow-sm);
+    margin-top: var(--erp-content-top);
+  }
+
+  .global-ref-header-ui {
+    @apply p-2 rounded-lg fixed z-40
+            flex flex-col items-center sm:flex-row sm:justify-between sm:items-center gap-4;
+    top: var(--erp-page-x);
+    left: var(--erp-page-x);
+    right: var(--erp-page-x);
+    min-height: var(--erp-header-height);
+    background-color: var(--erp-accent-soft);
+    border: 1px solid var(--erp-accent-border);
+    color: var(--erp-accent);
+    box-shadow: var(--erp-shadow-sm);
+  }
+
+  .global-ref-headertext-ui {
+    @apply text-sm lg:text-2xl font-semibold ml-0 sm:ml-2 whitespace-nowrap text-center sm:text-left;
+    letter-spacing: -0.02em;
+  }
+
+  /* REFERENCE FILES TABLE UI */
+
+  .global-ref-table-main-div-ui {
+    @apply rounded-lg;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    box-shadow: var(--erp-shadow-sm);
+  }
+
+  .global-ref-table-main-sub-div-ui { @apply max-h-[560px] overflow-y-auto relative rounded-lg; }
+  .global-ref-table-div-ui { @apply min-w-full border-collapse; }
+
+  .global-ref-thead-div-ui {
+    @apply sticky top-0;
+    background-color: var(--erp-surface-2);
+  }
+
+  .global-ref-th-ui {
+    @apply px-2 py-2 text-center text-[10px] sm:text-[10px] lg:text-xs font-semibold cursor-pointer whitespace-nowrap;
+    color: var(--erp-text-muted);
+    border-bottom: 1px solid var(--erp-border);
+    letter-spacing: 0.03em;
+  }
+
+  .global-ref-tr-ui {
+    @apply sticky top-0 z-10;
+    background-color: var(--erp-accent-soft);
+    color: var(--erp-accent);
+  }
+
+  .global-ref-td-ui {
+    @apply text-[9px] sm:text-[10px] lg:text-[11px] whitespace-normal px-2 py-1;
+    border-bottom: 1px solid var(--erp-border);
+    color: var(--erp-text);
+  }
+
+  .global-ref-td-inputclass-ui { @apply h-4 bg-transparent focus:outline-none focus:ring-0 whitespace-normal; }
+
+  .global-ref-td-button-edit-ui {
+    @apply flex-1 h-7 sm:h-6 w-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 rounded-md text-xs transition-colors;
+    background-color: var(--erp-accent-soft); border: 1px solid var(--erp-accent-border); color: var(--erp-accent);
+    transition-duration: var(--erp-fast);
+  }
+  .global-ref-td-button-edit-ui:hover { background-color: var(--erp-accent); color: #fff; }
+
+  .global-ref-td-button-delete-ui {
+    @apply flex-1 h-7 sm:h-6 w-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 rounded-md text-xs transition-colors;
+    background-color: var(--erp-danger-soft); border: 1px solid var(--erp-danger-soft); color: var(--erp-danger);
+    transition-duration: var(--erp-fast);
+  }
+  .global-ref-td-button-delete-ui:hover { background-color: var(--erp-danger); color: #fff; }
+
+  .global-ref-td-button-reg-ui {
+    @apply flex-1 h-7 sm:h-6 w-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 rounded-md text-xs transition-colors;
+    background-color: var(--erp-indigo-soft); border: 1px solid var(--erp-indigo-soft); color: var(--erp-indigo);
+    transition-duration: var(--erp-fast);
+  }
+  .global-ref-td-button-reg-ui:hover { background-color: var(--erp-indigo); color: #fff; }
+
+  .global-ref-td-button-edit-ui-mobile {
+    @apply w-full flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-colors;
+    background-color: var(--erp-accent-soft); color: var(--erp-accent);
+  }
+  .global-ref-td-button-edit-ui-mobile:hover { background-color: var(--erp-accent); color: #fff; }
+
+  .global-ref-td-button-delete-ui-mobile {
+    @apply w-full flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-colors;
+    background-color: var(--erp-danger-soft); color: var(--erp-danger);
+  }
+  .global-ref-td-button-delete-ui-mobile:hover { background-color: var(--erp-danger); color: #fff; }
+
+  .global-ref-td-button-reg-ui-mobile {
+    @apply w-full flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-colors;
+    background-color: var(--erp-indigo-soft); color: var(--erp-indigo);
+  }
+  .global-ref-td-button-reg-ui-mobile:hover { background-color: var(--erp-indigo); color: #fff; }
+
+  .global-ref-td-button-cancel-ui-mobile {
+    @apply w-full flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-colors;
+    background-color: var(--erp-surface-2); color: var(--erp-text-muted);
+  }
+  .global-ref-td-button-cancel-ui-mobile:hover { background-color: var(--erp-border-strong); color: var(--erp-text); }
+
+  /* REFERENCE FILES TEXTBOX UI */
+
+  .global-ref-textbox-group-div-ui { @apply space-y-4 p-2; }
+
+  .global-ref-textbox-ui {
+    @apply block w-full appearance-none rounded-md px-2 pb-2 pt-2 text-xs
+            focus:outline-none focus:ring-0 h-[30px] sm:h-[30px] lg:h-[35px];
+    background-color: var(--erp-surface); border: 1px solid var(--erp-border-strong); color: var(--erp-text);
+  }
+  .global-ref-textbox-ui:focus { border-color: var(--erp-accent); }
+
+  .global-ref-textbox-remarks-ui {
+    @apply block w-full appearance-none rounded-md px-4 pb-4 pt-2 mb-2 text-xs focus:outline-none focus:ring-0;
+    background-color: var(--erp-surface); border: 1px solid var(--erp-border-strong); color: var(--erp-text);
+  }
+
+  .global-ref-textbox-button-search-padding-ui {
+    @apply w-[40px] h-[30px] sm:h-[30px] lg:h-[40px] absolute inset-y-0 right-0;
+  }
+  .global-ref-textbox-button-search-enabled-ui  { background-color: var(--erp-accent); }
+  .global-ref-textbox-button-search-enabled-ui:hover { background-color: var(--erp-accent-hover); }
+  .global-ref-textbox-button-search-disabled-ui { background-color: var(--erp-border-strong); }
+  .global-ref-textbox-button-search-ui {
+    @apply text-white rounded-r-md flex items-center justify-center focus:outline-none;
+  }
+
+  .global-ref-floating-label {
+    @apply absolute start-2 -top-2.5 z-10 origin-[0] scale-75 transform px-1 text-xs transition-all
+            peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100
+            peer-focus:-top-2 peer-focus:scale-75;
+    background-color: var(--erp-surface); color: var(--erp-text-faint);
+  }
+
+  .global-ref-label-enabled, .global-ref-label-disabled {
+    @apply text-xs sm:text-sm;
+    background-color: var(--erp-surface); color: var(--erp-text-muted);
+  }
+
+  .global-ref-textbox-enabled {
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    @apply text-[10px] sm:text-[12px] !important;
+    color: var(--erp-text);
+  }
+  .global-ref-textbox-enabled:focus { border-color: var(--erp-accent); }
+
+  .global-ref-textbox-disabled {
+    background-color: var(--erp-surface-2) !important;
+    border: 1px solid var(--erp-border) !important;
+    @apply text-[10px] sm:text-[12px] cursor-not-allowed !important;
+    color: var(--erp-text-muted);
+    opacity: 1 !important;
+  }
+
+  .global-ref-filterbox-ui {
+    @apply block w-full appearance-none rounded-md px-2 text-[10px] sm:text-[11px] lg:text-[12px]
+            h-[20px] sm:h-[20px] lg:h-[25px] font-medium focus:outline-none focus:ring-0;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border-strong);
+    color: var(--erp-text);
+  }
+  .global-ref-filterbox-ui:focus { border-color: var(--erp-accent); }
+
+  .global-ref-asterisk-ui { color: var(--erp-danger); @apply font-bold; }
+
+  .global-ref-norecords-ui {
+    @apply px-4 py-2 text-center text-sm;
+    color: var(--erp-text-faint);
+  }
+
+  /* ============================================================
+     MODAL / LOOKUP
+     ============================================================ */
+
+  .global-lookup-table-main-div-ui {
+    @apply overflow-x-auto rounded-md;
+    background-color: var(--erp-surface);
+    box-shadow: var(--erp-shadow);
+  }
+
+  .global-lookup-table-main-sub-div-ui { @apply max-h-[360px] overflow-y-auto relative; }
+
+  .global-lookup-button-close-ui {
+    @apply absolute top-3 right-3 transition-colors;
+    color: var(--erp-text-faint);
+  }
+  .global-lookup-button-close-ui:hover { color: var(--erp-danger); }
+
+  .global-lookup-loading-main-div-ui { @apply flex justify-center items-center h-32; }
+  .global-lookup-loading-sub-div-ui,
+  .global-lookup-loading-div-ui {
+    @apply w-10 h-10 border-4 rounded-full animate-spin;
+    border-color: var(--erp-accent);
+    border-top-color: transparent;
+  }
+
+  .global-lookup-filter-text-ui {
+    @apply w-full pl-6 pr-1 py-1 text-[9px] sm:text-[10px] lg:text-xs font-medium rounded-md outline-none transition-all;
+    background-color: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+  }
+  .global-lookup-filter-text-ui:focus { border-color: var(--erp-accent); }
+
+  .global-lookup-table-div-ui { @apply min-w-full border-collapse text-xs; }
+
+  .global-lookup-thead-div-ui {
+    @apply sticky top-0 z-10;
+    background-color: var(--erp-surface-2);
+  }
+
+  .global-lookup-th-ui {
+    @apply px-1 py-1 sm:py-2 md:py-2 md:px-2 text-center text-[10px] sm:text-[10px] lg:text-xs font-semibold cursor-pointer;
+    color: var(--erp-text-muted);
+    border-bottom: 1px solid var(--erp-border);
+    letter-spacing: 0.03em;
+  }
+
+  .global-lookup-th-text-ui {
+    @apply px-1 py-1 text-[10px] sm:text-[11px] lg:text-xs font-semibold cursor-pointer whitespace-nowrap;
+    color: var(--erp-text-muted);
+  }
+
+  .global-lookup-tr-ui {
+    @apply transition-colors;
+    border-bottom: 1px solid var(--erp-border);
+    transition-duration: var(--erp-fast);
+  }
+  .global-lookup-tr-ui:hover { background-color: var(--erp-accent-soft); }
+
+  .global-lookup-td-ui {
+    @apply text-[10px] sm:text-[11px] lg:text-[12px] px-2 py-1 sm:px-3 sm:py-1.5 break-all whitespace-normal overflow-hidden;
+    color: var(--erp-text);
+  }
+
+  .global-lookup-td-apply-ui {
+    @apply text-[10px] sm:text-[10px] lg:text-xs text-center px-2;
+    border: 1px solid var(--erp-accent-border);
+    color: var(--erp-text);
+  }
+
+  .global-lookup-td-inputclass-ui { @apply h-4 bg-transparent focus:outline-none focus:ring-0 whitespace-normal; }
+
+  .global-lookup-td-button-add-ui {
+    @apply text-white px-3 py-1 rounded-md transition w-[35px];
+    background-color: var(--erp-accent);
+  }
+  .global-lookup-td-button-add-ui:hover { background-color: var(--erp-accent-hover); }
+
+  .global-lookup-apply-button-ui {
+    @apply text-white px-3 py-1 rounded-md transition-colors;
+    background-color: var(--erp-accent);
+  }
+  .global-lookup-apply-button-ui:hover { background-color: var(--erp-accent-hover); }
+
+  .global-lookup-count-ui { @apply p-2 text-xs; color: var(--erp-text-muted); }
+
+  .global-lookup-main-div-ui {
+    @apply fixed inset-0 flex items-center justify-center z-50 p-4;
+    background-color: rgba(11, 13, 17, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .global-lookup-div-ui {
+    @apply rounded-lg p-4 w-full overflow-auto relative;
+    background-color: var(--erp-surface);
+    box-shadow: var(--erp-shadow-lg);
+    max-width: min(96vw, 1100px);
+    max-height: min(90vh, 760px);
+  }
+
+  .global-lookup-headertext-ui {
+    @apply text-[12px] sm:text-base font-semibold;
+    color: var(--erp-accent);
+  }
+
+  .global-lookup-footer-div-ui {
+    @apply sticky bottom-0 z-20 flex justify-between items-center p-3;
+    background-color: var(--erp-surface);
+    color: var(--erp-text);
+    border-top: 1px solid var(--erp-border);
+  }
+
+  .global-lookup-footer-button-prevnext-ui {
+    @apply px-4 py-2 rounded-md text-white transition-colors disabled:opacity-50;
+    background-color: var(--erp-accent);
+  }
+  .global-lookup-footer-button-prevnext-ui:hover:not(:disabled) { background-color: var(--erp-accent-hover); }
+
+  .global-lookup-footer-records-div-ui {
+    @apply py-1 px-2 sm:p-2 flex justify-between items-center;
+    background-color: var(--erp-surface-2);
+    border-top: 1px solid var(--erp-border);
+    color: var(--erp-text);
+  }
+
+  .global-lookup-footer-records-text-ui {
+    @apply text-[10px] sm:text-[11px] font-medium;
+    color: var(--erp-text-muted);
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+/* ============================================================
+   TOASTS / DIALOGS (SweetAlert + Sonner)
+   ============================================================ */
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translate3d(0, -6px, 0) scale(0.98); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes toastSlideOut {
+  from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to   { opacity: 0; transform: translate3d(0, -6px, 0) scale(0.98); }
+}
+
+.toast-glass {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.dark .toast-glass { background: rgba(20, 23, 28, 0.78) !important; }
+
+.toast-smooth-in  { animation: toastSlideIn var(--erp-base, 200ms) var(--erp-ease, ease-out) forwards !important; }
+.toast-smooth-out { animation: toastSlideOut var(--erp-fast, 140ms) ease-in forwards !important; }
+
+.toast-title { font-weight: 600; font-size: 12px; color: var(--erp-text); }
+@media (min-width: 768px) { .toast-title { font-size: 14px; } }
+
+@keyframes sonnerProgress { from { width: 100%; } to { width: 0%; } }
+.sonner-success-progress { animation: sonnerProgress 2200ms linear forwards; }
+.sonner-error-progress,
+.sonner-delete-progress,
+.sonner-info-progress { animation: sonnerProgress 3000ms linear forwards; }
+
+.swal-success-popup, .swal-delete-popup, .swal-sonner-success-popup,
+.swal-sonner-delete-popup, .swal-sonner-success-toast-popup,
+.swal-sonner-delete-toast-popup, .swal-sonner-error-toast-popup,
+.swal-save-dialog-popup {
+  border-radius: var(--erp-radius-lg) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--erp-border) !important;
+  box-shadow: var(--erp-shadow-lg) !important;
+}
+
+.swal-success-progress { background: var(--erp-accent) !important; height: 3px !important; }
+
+.swal-delete-title {
+  margin: 0 !important; padding: 0 !important; font-size: 15px !important; font-weight: 700 !important;
+  color: var(--erp-text) !important; text-align: center !important;
+}
+.swal-delete-text {
+  margin: 10px 0 0 0 !important; padding: 0 !important; font-size: 14px !important; line-height: 1.45 !important;
+  color: var(--erp-text-muted) !important; text-align: center !important;
+}
+.swal-delete-actions { margin: 18px 0 0 0 !important; gap: 10px !important; display: flex !important; justify-content: center !important; }
+.swal-delete-confirm {
+  background: var(--erp-danger) !important; color: #fff !important; border: none !important;
+  border-radius: var(--erp-radius-sm) !important; font-size: 14px !important; font-weight: 600 !important;
+  padding: 10px 18px !important; min-width: 120px; box-shadow: none !important;
+}
+.swal-delete-confirm:hover { background: var(--erp-danger-hover) !important; }
+.swal-delete-cancel {
+  background: var(--erp-surface-2) !important; color: var(--erp-text-muted) !important; border: none !important;
+  border-radius: var(--erp-radius-sm) !important; font-size: 14px !important; font-weight: 500 !important;
+  padding: 10px 18px !important; min-width: 95px; box-shadow: none !important;
+}
+.swal-delete-cancel:hover { background: var(--erp-border-strong) !important; }
+
+.swal-success-sonner-title, .swal-success-sonner-message { margin: 0 !important; padding: 0 !important; }
+.swal-success-sonner-close, .swal-sonner-success-close,
+.swal-sonner-delete-close, .swal-sonner-delete-toast-close,
+.swal-sonner-error-toast-close { outline: none !important; box-shadow: none !important; }
+.swal-success-sonner-progress, .swal-sonner-success-progress { background: var(--erp-accent) !important; height: 3px !important; }
+
+.swal-sonner-success-wrap, .swal-sonner-delete-toast-wrap {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; padding-right: 42px; text-align: left;
+}
+.swal-sonner-success-icon {
+  margin-top: 2px; display: flex; height: 36px; width: 36px; min-width: 36px; align-items: center; justify-content: center;
+  border-radius: 9999px; background: var(--erp-accent-soft); border: 1px solid var(--erp-accent-border); color: var(--erp-accent);
+}
+.swal-sonner-success-icon svg { width: 18px; height: 18px; }
+.swal-sonner-success-content { min-width: 0; flex: 1; }
+.swal-sonner-success-title { font-size: 14px; font-weight: 600; color: var(--erp-text); line-height: 1.2; }
+.swal-sonner-success-message {
+  margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--erp-text-muted);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+.swal-sonner-info-toast-progress { background: var(--erp-accent) !important; }
+
+.swal-sonner-delete-wrap { padding: 24px 24px 8px; text-align: center; }
+.swal-sonner-delete-icon {
+  margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; color: var(--erp-danger);
+}
+.swal-sonner-delete-icon svg { width: 28px; height: 28px; }
+.swal-sonner-delete-title { font-size: 15px; font-weight: 700; color: var(--erp-text); line-height: 1.2; }
+.swal-sonner-delete-message {
+  margin-top: 10px; font-size: 14px; line-height: 1.45; color: var(--erp-text-muted);
+  text-align: center; white-space: pre-wrap; word-break: break-word;
+}
+.swal-sonner-delete-actions {
+  margin: 14px 0 0 0 !important; padding: 0 24px 24px !important; display: flex !important;
+  justify-content: center !important; gap: 10px !important;
+}
+.swal-sonner-delete-confirm {
+  min-width: 94px !important; height: 36px !important; padding: 0 16px !important; border: none !important;
+  border-radius: var(--erp-radius-sm) !important; background: var(--erp-danger) !important; color: #fff !important;
+  font-size: 14px !important; font-weight: 600 !important; box-shadow: none !important;
+}
+.swal-sonner-delete-confirm:hover { background: var(--erp-danger-hover) !important; }
+.swal-sonner-delete-cancel {
+  min-width: 86px !important; height: 36px !important; padding: 0 16px !important; border: none !important;
+  border-radius: var(--erp-radius-sm) !important; background: var(--erp-surface-2) !important; color: var(--erp-text-muted) !important;
+  font-size: 14px !important; font-weight: 500 !important; box-shadow: none !important;
+}
+.swal-sonner-delete-cancel:hover { background: var(--erp-border-strong) !important; }
+
+.swal-sonner-delete-toast-icon {
+  margin-top: 1px; display: flex; height: 36px; width: 36px; min-width: 36px; align-items: center; justify-content: center;
+  border-radius: 9999px; background: var(--erp-danger-soft); border: 1px solid var(--erp-danger-soft); color: var(--erp-danger);
+}
+.swal-sonner-delete-toast-icon svg { width: 16px; height: 16px; }
+.swal-sonner-delete-toast-content { min-width: 0; flex: 1; }
+.swal-sonner-delete-toast-title { font-size: 14px; font-weight: 600; color: var(--erp-text); line-height: 1.2; margin: 0; }
+.swal-sonner-delete-toast-message {
+  margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--erp-text-muted);
+  white-space: pre-wrap; word-break: break-word;
+}
+.swal-sonner-delete-toast-progress { background: var(--erp-danger) !important; height: 3px !important; }
+
+.swal-sonner-error-toast-wrap { display: flex; align-items: flex-start; padding: 12px 10px; gap: 10px; }
+.swal-sonner-error-toast-icon { width: 18px; height: 18px; color: var(--erp-danger); flex-shrink: 0; margin-top: 2px; }
+.swal-sonner-error-toast-icon svg { width: 18px; height: 18px; }
+.swal-sonner-error-toast-content { display: flex; flex-direction: column; text-align: left; max-width: 240px; }
+.swal-sonner-error-toast-title { font-size: 14px; font-weight: 600; color: var(--erp-text); line-height: 1.2; margin: 0; }
+.swal-sonner-error-toast-message {
+  margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--erp-text-muted);
+  white-space: pre-wrap; word-break: break-word;
+}
+.swal-sonner-error-toast-progress { background: var(--erp-danger) !important; height: 3px !important; }
+
+.swal-save-dialog-wrap { padding: 26px 28px 18px; text-align: center; }
+.swal-save-dialog-icon {
+  margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+  border-radius: 9999px; background: var(--erp-accent-soft); border: 1px solid var(--erp-accent-border); color: var(--erp-accent);
+}
+.swal-save-dialog-icon svg { width: 22px; height: 22px; }
+.swal-save-dialog-title { font-size: 17px; font-weight: 700; color: var(--erp-text); line-height: 1.2; }
+.swal-save-dialog-message { margin-top: 10px; margin-bottom: 16px; font-size: 14px; line-height: 1.45; color: var(--erp-text-muted); }
+.swal-save-dialog-actions {
+  margin: 0 !important; padding: 0 20px 20px !important; display: flex !important; justify-content: center !important;
+  align-items: center !important; gap: 10px !important; flex-wrap: wrap !important;
+}
+.swal-save-dialog-confirm, .swal-save-dialog-deny, .swal-save-dialog-cancel {
+  min-height: 36px !important; min-width: 112px !important; max-width: 124px !important; padding: 6px 10px !important;
+  border: none !important; border-radius: var(--erp-radius-sm) !important; font-size: 12px !important; font-weight: 600 !important;
+  line-height: 1.15 !important; text-align: center !important; white-space: normal !important; word-break: break-word !important;
+  box-shadow: none !important; display: inline-flex !important; align-items: center !important; justify-content: center !important;
+}
+.swal-save-dialog-confirm { background: var(--erp-accent) !important; color: #fff !important; }
+.swal-save-dialog-confirm:hover { background: var(--erp-accent-hover) !important; }
+.swal-save-dialog-deny { background: var(--erp-surface-2) !important; color: var(--erp-text) !important; }
+.swal-save-dialog-deny:hover { background: var(--erp-border-strong) !important; }
+.swal-save-dialog-cancel { background: var(--erp-success) !important; color: #fff !important; }
+.swal-save-dialog-cancel:hover { filter: brightness(0.92); }
+.swal-save-dialog-progress { background: var(--erp-accent) !important; height: 3px !important; }
+
+@media (max-width: 640px) {
+  .swal-save-dialog-actions { grid-template-columns: 1fr !important; padding: 0 20px 20px !important; }
+}
+
+.swal-save-dialog-print-option { margin-top: 14px; margin-bottom: 6px; text-align: left; }
+.swal-save-dialog-label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--erp-text-muted); }
+.swal-save-dialog-select {
+  width: 100%; height: 36px; border: 1px solid var(--erp-border-strong); border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface); padding: 0 10px; font-size: 13px; color: var(--erp-text); outline: none;
+}
+.swal-save-dialog-select:focus { border-color: var(--erp-accent); box-shadow: 0 0 0 3px var(--erp-accent-soft); }
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--erp-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   GLOBAL UI ENHANCEMENT OVERRIDES — NAYSA Financials Cloud
+   ============================================================ */
+
+:root {
+  --erp-surface-glass: rgba(255, 255, 255, 0.86);
+  --erp-row-hover: #F2F5FC;
+  --erp-row-selected: #E9EFFB;
+  --erp-row-zebra: #FCFDFF;
+  --erp-input-bg: #FFFFFF;
+  --erp-input-disabled: #F0F3FA;
+  --erp-ring: rgba(33, 80, 214, 0.18);
+}
+
+.dark {
+  --erp-surface-glass: rgba(17, 21, 38, 0.86);
+  --erp-row-hover: #17213A;
+  --erp-row-selected: #182238;
+  --erp-row-zebra: #0D1221;
+  --erp-input-bg: #111526;
+  --erp-input-disabled: #1A2035;
+  --erp-ring: rgba(91, 130, 232, 0.25);
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    min-height: 100%;
+    background: var(--erp-bg);
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    overflow-x: hidden;
+    font-family: 'Inter', 'Work Sans', 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: -0.005em;
+  }
+
+  ::selection {
+    background: var(--erp-accent-soft);
+    color: var(--erp-accent);
+  }
+
+  input, select, textarea, button {
+    font: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--erp-text-faint);
+    opacity: 0.85;
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled,
+  button:disabled {
+    cursor: not-allowed !important;
+  }
+
+  input[readonly],
+  textarea[readonly] {
+    cursor: default !important;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--erp-border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--erp-border-strong);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--erp-text-faint);
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* ------------------------------------------------------------
+     PAGE SHELL / FIXED HEADER — single alignment system
+     ------------------------------------------------------------ */
+
+  .global-tran-header-ui,
+  .global-ref-header-ui {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background-color: var(--erp-surface-glass);
+    border-color: var(--erp-accent-border);
+  }
+
+  .global-tran-header-ui::before,
+  .global-ref-header-ui::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: var(--erp-accent-soft);
+    opacity: 0.7;
+  }
+
+  .global-tran-headertext-div-ui,
+  .global-tran-headerstat-div-ui,
+  .global-ref-headertext-ui,
+  .global-ref-header-ui > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .global-tran-header-div-ui,
+  .global-tran-subheader-div-ui,
+  .global-tran-tab-div-ui,
+  .global-ref-tab-div-ui,
+  .global-ref-table-main-div-ui,
+  .global-tran-table-main-div-ui,
+  .global-lookup-div-ui {
+    border-radius: var(--erp-radius-lg);
+  }
+
+  .global-tran-header-div-ui,
+  .global-tran-subheader-div-ui,
+  .global-ref-tab-div-ui {
+    box-shadow: var(--erp-shadow-sm);
+  }
+
+  /* Optional generic cards for new screens */
+  .global-card-ui {
+    background: var(--erp-surface);
+    border: 1px solid var(--erp-border);
+    border-radius: var(--erp-radius-lg);
+    box-shadow: var(--erp-shadow-sm);
+  }
+
+  .global-card-header-ui {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--erp-border);
+  }
+
+  .global-section-title-ui {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--erp-text);
+    letter-spacing: -0.01em;
+  }
+
+  .global-section-subtitle-ui {
+    font-size: 0.75rem;
+    color: var(--erp-text-muted);
+  }
+
+  /* ------------------------------------------------------------
+     INPUTS / FLOATING LABELS
+     ------------------------------------------------------------ */
+
+  .global-tran-textbox-ui,
+  .global-ref-textbox-ui,
+  .global-ref-filterbox-ui,
+  .global-lookup-filter-text-ui,
+  .swal-save-dialog-select {
+    background-color: var(--erp-input-bg);
+    border-color: var(--erp-border-strong);
+    cursor: text;
+  }
+
+  .global-tran-textbox-ui:hover,
+  .global-ref-textbox-ui:hover,
+  .global-ref-filterbox-ui:hover,
+  .global-lookup-filter-text-ui:hover,
+  .swal-save-dialog-select:hover {
+    border-color: var(--erp-accent-border);
+  }
+
+  .global-tran-textbox-ui:focus,
+  .global-ref-textbox-ui:focus,
+  .global-ref-filterbox-ui:focus,
+  .global-lookup-filter-text-ui:focus,
+  .global-tran-textbox-remarks-ui:focus,
+  .global-ref-textbox-remarks-ui:focus,
+  .swal-save-dialog-select:focus {
+    border-color: var(--erp-accent) !important;
+    box-shadow: 0 0 0 3px var(--erp-ring) !important;
+  }
+
+  .global-ref-textbox-disabled,
+  .global-tran-textbox-remarks-ui-disabled,
+  .global-tran-textbox-ui:disabled,
+  .global-ref-textbox-ui:disabled,
+  .global-ref-filterbox-ui:disabled {
+    background-color: var(--erp-input-disabled) !important;
+    border-color: var(--erp-border) !important;
+    color: var(--erp-text-muted) !important;
+    -webkit-text-fill-color: var(--erp-text-muted);
+  }
+
+  .global-tran-floating-label,
+  .global-ref-floating-label,
+  .global-tran-floating-label-remarks,
+  .global-tran-floating-label-remarks-disabled,
+  .global-ref-label-enabled,
+  .global-ref-label-disabled {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .global-tran-textbox-button-search-padding-ui,
+  .global-ref-textbox-button-search-padding-ui {
+    height: 100%;
+    min-height: 30px;
+  }
+
+  .global-ref-textbox-button-search-padding-ui {
+    max-height: 35px;
+  }
+
+  /* ------------------------------------------------------------
+     BUTTONS / ACTIONS
+     ------------------------------------------------------------ */
+
+  .global-tran-button-lookup,
+  .global-tran-button-generateGL,
+  .global-tran-tab-footer-button-add-ui,
+  .global-lookup-apply-button-ui,
+  .global-lookup-footer-button-prevnext-ui,
+  .global-lookup-td-button-add-ui {
+    border: 1px solid transparent;
+    box-shadow: var(--erp-shadow-sm);
+    min-height: 34px;
+  }
+
+  .global-tran-button-lookup:active,
+  .global-tran-button-generateGL:active,
+  .global-tran-tab-footer-button-add-ui:active,
+  .global-lookup-apply-button-ui:active,
+  .global-lookup-footer-button-prevnext-ui:active,
+  .global-lookup-td-button-add-ui:active,
+  .global-ref-td-button-edit-ui:active,
+  .global-ref-td-button-delete-ui:active,
+  .global-ref-td-button-reg-ui:active,
+  .global-tran-td-button-add-ui:active,
+  .global-tran-td-button-delete-ui:active {
+    transform: translateY(1px);
+  }
+
+  .global-action-primary-ui,
+  .global-action-secondary-ui,
+  .global-action-danger-ui,
+  .global-action-ghost-ui {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 34px;
+    padding: 0.45rem 0.8rem;
+    border-radius: var(--erp-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: background-color var(--erp-fast) var(--erp-ease), color var(--erp-fast) var(--erp-ease), border-color var(--erp-fast) var(--erp-ease), transform var(--erp-fast) var(--erp-ease);
+  }
+
+  .global-action-primary-ui {
+    background: var(--erp-accent);
+    color: #fff;
+    border: 1px solid var(--erp-accent);
+  }
+  .global-action-primary-ui:hover { background: var(--erp-accent-hover); border-color: var(--erp-accent-hover); }
+
+  .global-action-secondary-ui {
+    background: var(--erp-accent-soft);
+    color: var(--erp-accent);
+    border: 1px solid var(--erp-accent-border);
+  }
+  .global-action-secondary-ui:hover { background: var(--erp-accent); color: #fff; border-color: var(--erp-accent); }
+
+  .global-action-danger-ui {
+    background: var(--erp-danger-soft);
+    color: var(--erp-danger);
+    border: 1px solid var(--erp-danger-soft);
+  }
+  .global-action-danger-ui:hover { background: var(--erp-danger); color: #fff; border-color: var(--erp-danger); }
+
+  .global-action-ghost-ui {
+    background: transparent;
+    color: var(--erp-text-muted);
+    border: 1px solid var(--erp-border);
+  }
+  .global-action-ghost-ui:hover { background: var(--erp-surface-2); color: var(--erp-text); }
+
+  /* ------------------------------------------------------------
+     TABLES — cleaner rows, sticky header, selected/edited states
+     ------------------------------------------------------------ */
+
+  .global-tran-table-main-sub-div-ui,
+  .global-ref-table-main-sub-div-ui,
+  .global-lookup-table-main-sub-div-ui {
+    border-radius: inherit;
+  }
+
+  .global-tran-thead-div-ui,
+  .global-ref-thead-div-ui,
+  .global-lookup-thead-div-ui {
+    z-index: 20;
+    box-shadow: inset 0 -1px 0 var(--erp-border);
+  }
+
+  .global-tran-th-ui,
+  .global-ref-th-ui,
+  .global-lookup-th-ui,
+  .global-lookup-th-text-ui {
+    background-color: var(--erp-surface-2);
+    color: var(--erp-text-muted);
+  }
+
+  .global-tran-tr-ui,
+  .global-lookup-tr-ui {
+    min-height: var(--erp-table-row-height);
+  }
+
+  .global-tran-table-div-ui tbody tr:nth-child(even),
+  .global-ref-table-div-ui tbody tr:nth-child(even),
+  .global-lookup-table-div-ui tbody tr:nth-child(even) {
+    background-color: var(--erp-row-zebra);
+  }
+
+  .global-tran-tr-ui:hover,
+  .global-ref-table-div-ui tbody tr:hover,
+  .global-lookup-tr-ui:hover {
+    background-color: var(--erp-row-hover) !important;
+  }
+
+  .global-tran-tr-ui[aria-selected="true"],
+  .global-ref-table-div-ui tbody tr[aria-selected="true"],
+  .global-lookup-tr-ui[aria-selected="true"],
+  .global-row-selected-ui {
+    background-color: var(--erp-row-selected) !important;
+    box-shadow: inset 3px 0 0 var(--erp-accent);
+  }
+
+  .global-tran-td-ui,
+  .global-ref-td-ui,
+  .global-lookup-td-ui,
+  .global-lookup-td-apply-ui {
+    line-height: 1.35;
+  }
+
+  .global-tran-td-inputclass-ui,
+  .global-ref-td-inputclass-ui,
+  .global-lookup-td-inputclass-ui {
+    width: 100%;
+    min-width: 0;
+    border-radius: var(--erp-radius-sm);
+  }
+
+  .global-tran-td-inputclass-ui:focus,
+  .global-ref-td-inputclass-ui:focus,
+  .global-lookup-td-inputclass-ui:focus {
+    background-color: var(--erp-surface);
+    box-shadow: 0 0 0 2px var(--erp-ring);
+  }
+
+  /* Fix: this class is commonly used on tbody rows; avoid making every row sticky. */
+  tbody .global-ref-tr-ui {
+    position: static;
+    top: auto;
+    z-index: auto;
+    color: var(--erp-text);
+    background: transparent;
+    transition: background-color var(--erp-fast) var(--erp-ease);
+  }
+
+  tbody .global-ref-tr-ui:hover {
+    background: var(--erp-row-hover);
+  }
+
+  .global-tran-numeric-ui,
+  .global-ref-numeric-ui,
+  .global-lookup-numeric-ui {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .global-tran-code-ui,
+  .global-ref-code-ui,
+  .global-lookup-code-ui {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.92em;
+    letter-spacing: 0;
+  }
+
+  .global-badge-ui,
+  .global-badge-success-ui,
+  .global-badge-danger-ui,
+  .global-badge-warning-ui,
+  .global-badge-info-ui {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 22px;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .global-badge-ui,
+  .global-badge-info-ui {
+    background: var(--erp-accent-soft);
+    color: var(--erp-accent);
+    border: 1px solid var(--erp-accent-border);
+  }
+  .global-badge-success-ui {
+    background: var(--erp-success-soft);
+    color: var(--erp-success);
+    border: 1px solid var(--erp-success-soft);
+  }
+  .global-badge-danger-ui {
+    background: var(--erp-danger-soft);
+    color: var(--erp-danger);
+    border: 1px solid var(--erp-danger-soft);
+  }
+  .global-badge-warning-ui {
+    background: var(--erp-warning-soft);
+    color: var(--erp-warning);
+    border: 1px solid var(--erp-warning-soft);
+  }
+
+  /* ------------------------------------------------------------
+     LOOKUP / MODAL
+     ------------------------------------------------------------ */
+
+  .global-tran-spinner-main-div-ui {
+    padding: 1rem;
+  }
+
+  .global-lookup-footer-div-ui,
+  .global-lookup-footer-records-div-ui {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .global-lookup-button-close-ui {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+  }
+
+  .global-lookup-button-close-ui:hover {
+    background: var(--erp-danger-soft);
+  }
+
+  /* ------------------------------------------------------------
+     TOAST / DIALOG IMPROVEMENTS
+     ------------------------------------------------------------ */
+
+  .swal2-popup {
+    background: var(--erp-surface) !important;
+    color: var(--erp-text) !important;
+  }
+
+  .swal2-html-container {
+    color: var(--erp-text-muted) !important;
+  }
+
+  /* ------------------------------------------------------------
+     MOBILE / RESPONSIVE POLISH
+     ------------------------------------------------------------ */
+
+  @media (max-width: 768px) {
+    :root {
+      --erp-header-height: 52px;
+      --erp-content-top: calc(var(--erp-header-height) + 2.5rem);
+      --erp-table-row-height: 38px;
+    }
+
+    .global-tran-header-ui,
+    .global-ref-header-ui {
+      border-radius: var(--erp-radius-lg);
+    }
+
+    .global-tran-headerstat-div-ui {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem;
+      padding-right: 0;
+    }
+
+    .global-tran-headerstat-text-ui,
+    .global-tran-stat-text-ui {
+      font-size: 0.68rem;
+      line-height: 1.15;
+    }
+
+    .global-tran-tab-div-ui,
+    .global-ref-tab-div-ui {
+      padding: 0.9rem;
+    }
+
+    .global-tran-button-lookup,
+    .global-tran-button-generateGL {
+      margin-right: 0;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .global-tran-table-main-sub-div-ui,
+    .global-lookup-table-main-sub-div-ui {
+      max-height: 58vh;
+    }
+
+    .global-ref-table-main-sub-div-ui {
+      max-height: 62vh;
+    }
+
+    .global-tran-th-ui,
+    .global-ref-th-ui,
+    .global-lookup-th-ui {
+      position: sticky;
+      top: 0;
+    }
+
+    .global-tran-td-ui,
+    .global-ref-td-ui,
+    .global-lookup-td-ui {
+      padding-left: 0.55rem;
+      padding-right: 0.55rem;
+    }
+
+    .global-lookup-div-ui {
+      width: 100%;
+      max-width: 100%;
+      max-height: 88vh;
+      padding: 0.85rem;
+    }
+
+    .swal-save-dialog-actions {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+
+    .swal-save-dialog-confirm,
+    .swal-save-dialog-deny,
+    .swal-save-dialog-cancel {
+      width: 100% !important;
+      max-width: none !important;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .global-tran-headertext-ui,
+    .global-ref-headertext-ui {
+      font-size: 0.9rem;
+    }
+
+    .global-tran-headerstat-div-ui {
+      grid-template-columns: 1fr;
+    }
+
+    .global-tran-headerstat-text-ui,
+    .global-tran-stat-text-ui {
+      display: inline;
+    }
+  }
+
+  /* Optional compact mode: wrap any page with className="global-density-compact" */
+  .global-density-compact .global-tran-textbox-ui,
+  .global-density-compact .global-ref-textbox-ui {
+    height: 30px;
+  }
+
+  .global-density-compact .global-tran-td-ui,
+  .global-density-compact .global-ref-td-ui,
+  .global-density-compact .global-lookup-td-ui {
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
+  }
+
+  .global-density-compact .global-tran-table-main-sub-div-ui,
+  .global-density-compact .global-ref-table-main-sub-div-ui,
+  .global-density-compact .global-lookup-table-main-sub-div-ui {
+    font-size: 0.72rem;
+  }
+}

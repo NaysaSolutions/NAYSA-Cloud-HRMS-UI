@@ -1,0 +1,124 @@
+openapi: "3.0.0"
+info:
+  title: "APIs Documentation TVSD to NAYSA Integration - Payments"
+  description: This document outlines the APIs that NFS will use to receive data from TVSD. It provides details on the API endpoints, data formats, authentication methods, and error handling mechanisms to ensure seamless integration between the two systems.
+  version: "1.0.0"
+
+servers:
+  - url: "https://api.nemarph.com:81/api/Payments"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: OAuth2
+
+paths:
+  /api/Payments:
+    post:
+      tags:
+        - "Payments"
+      summary: "Receive Payments Data"
+      description: "This endpoint is designed for TVSD to send updates and new approved credit application data. The received data will be validated, logged, and inserted into the 'Payments' table."
+      operationId: "Payments"
+      requestBody:
+        description: "JSON input containing Payments data"
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                PAYMENTS:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      BRANCH_ID:
+                        type: string
+                      VACAREF_NO:
+                        type: string
+                      PAYMENT_DATE:
+                        type: string
+                        format: date
+                      AMOUNT:
+                        type: number
+                        format: float
+                      PAYMENT_TYPE:
+                        type: string
+              example:
+                PAYMENTS:
+                  - BRANCH_ID: "CMR"
+                    VACAREF_NO: "NNDC-CMR-0004-202209"
+                    PAYMENT_DATE: "2024-10-30"
+                    AMOUNT: 7195.91
+                    PAYMENT_TYPE: "Bank Transfer"
+                    BANK: "BPI"
+                  - BRANCH_ID: "HO"
+                    VACAREF_NO: "NNDC-CMR-0004-202210"
+                    PAYMENT_DATE: "2024-10-30"
+                    AMOUNT: 2120.50
+                    PAYMENT_TYPE: "CASH"
+                  - BRANCH_ID: "HO"
+                    VACAREF_NO: "NNDC-CMR-0004-202211"
+                    PAYMENT_DATE: "2024-10-30"
+                    AMOUNT: 2296.75
+                    PAYMENT_TYPE: "Gcash"
+                
+      responses:
+        "200":
+          description: "Success response code"
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                message: "Payment processed and inserted successfully"
+        "400":
+          description: "Invalid Data Structure"
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                error: "Invalid Data Structure"
+                details:
+                  BRANCH_ID: ["The BRANCH_ID field is required."]
+                  VACAREF_NO: ["The VACAREF_NO field is required."]
+                  PAYMENT_DATE: ["The PAYMENT_DATE field is required."]
+                  AMOUNT: ["The AMOUNT field is required."]
+                  PAYMENT_TYPE: ["The PAYMENT_TYPE field is required."]
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 401
+                  message:
+                    type: string
+                    example: "Unauthorized Login."
+        "409":
+          description: "Duplicate Data"
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                error: "Failed due to duplicate sending. Data already exists in NFS."
+        "500":
+          description: "Server error"
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                error: "Server error: error details"
+      security:
+        - bearerAuth: []
+
+

@@ -1,0 +1,24 @@
+# Node dependencies
+node_modules/
+
+# Vite
+.vite/
+dist/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Exclude Laravel vendor folder accidentally copied in React
+vendor/
+/vendor/
+**/vendor/
+
+# Exclude React node modules
+node_modules/
+/node_modules/
+**/node_modules/
