@@ -51,9 +51,9 @@ const broadcastThemeChange = (theme) => {
 
 const iconMap = {
   Dashboard: FiHome,
-  "General Ledger": FiBook,
+  "HR Management": FiBook,
   "Accounts Payable": FiCreditCard,
-  "Accounts Receivable": FiDollarSign,
+  "Payroll Management": FiDollarSign,
   "Global Reference": FiGlobe,
   "Application Security": FiShield,
   Purchasing: FiShoppingCart,
@@ -501,8 +501,8 @@ const Sidebar = ({ menuItems = null, onNavigate, onOpenModal }) => {
             </NavLink>
 
             <div className="min-w-0">
-              <div className="mt-1 font-bold text-blue-800 dark:text-blue-300 truncate">
-                Financials
+              <div className="mt-1 ml-[-15px] font-bold text-blue-800 dark:text-blue-300 truncate">
+                HRMS
               </div>
             </div>
           </div>

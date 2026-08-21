@@ -1,4 +1,4 @@
-// src/NAYSA Cloud/Reference File/BranchRef.jsx
+// src/NAYSA Cloud/Reference File/RefBranch.jsx
 import React, {
   useEffect,
   useMemo,
@@ -22,6 +22,9 @@ import {
   faChevronDown,
   faFilePdf,
   faVideo,
+  faBuilding,
+  faCircleCheck,
+  faCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 
 import ButtonBar from "@/NAYSA Cloud/Global/ButtonBar.jsx";
@@ -55,9 +58,17 @@ const DOC_TYPE = "Branch";
 const BRANCH_TYPE_OPTIONS = [
   { value: "Main", label: "Main" },
   { value: "Branch", label: "Branch" },
-  { value: "Company Store", label: "Company Store" },
-  { value: "Franchisee", label: "Franchisee" },
 ];
+
+// Visual language for the Branch Type badge shown in the table.
+const BRANCH_TYPE_STYLES = {
+  Main: "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200",
+  Branch: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
+  "Company Store":
+    "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+  Franchisee:
+    "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200",
+};
 
 const normalizeBranchType = (value) => {
   const v = String(value || "").trim().toUpperCase();
@@ -74,13 +85,9 @@ const normalizeBranchType = (value) => {
 const INITIAL_FORM = {
   branchCode: "",
   branchName: "",
-  branchAddr1: "",
-  branchAddr2: "",
-  branchAddr3: "",
+  branchAddress: "",
   branchTin: "",
-  telNo: "",
-  zipCode: "",
-  main: "Branch", // Main / Branch / Company Store / Franchisee
+  branchType: "Branch", // Main / Branch / Company Store / Franchisee
   active: "Y", // Y/N
   tblFieldArray: [],
 };
@@ -92,7 +99,7 @@ const INITIAL_REG = {
   lastUpdatedDate: "",
 };
 
-const BranchRef = () => {
+const RefBranch = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -104,6 +111,7 @@ const BranchRef = () => {
   const [registrationInfo, setRegistrationInfo] = useState(INITIAL_REG);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isFieldsExpanded, setIsFieldsExpanded] = useState(false);
   const [selectedBranchCode, setSelectedBranchCode] = useState(null);
 
   const [isOpenGuide, setOpenGuide] = useState(false);
@@ -114,10 +122,12 @@ const BranchRef = () => {
   const userCode =
     user?.USER_CODE || user?.username || user?.userCode || "SYSTEM";
 
+  const isAdding = isEditing && !selectedBranchCode;
+
   const updateForm = (updates) => setFormData((p) => ({ ...p, ...updates }));
 
   const getAddress = useCallback((row) => {
-    return [row?.branchAddr1, row?.branchAddr2, row?.branchAddr3]
+    return [row?.branchAddress, row?.branchAddr2, row?.branchAddr3]
       .filter(Boolean)
       .join(", ");
   }, []);
@@ -208,11 +218,13 @@ const BranchRef = () => {
     setRegistrationInfo(INITIAL_REG);
     setSelectedBranchCode(null);
     setIsEditing(false);
+    setIsFieldsExpanded(false);
   };
 
   const startAdd = () => {
     resetForm();
     setIsEditing(true);
+    setIsFieldsExpanded(true);
   };
 
   const handleEdit = (row) => {
@@ -223,13 +235,9 @@ const BranchRef = () => {
       ...INITIAL_FORM,
       branchCode: row.branchCode ?? "",
       branchName: row.branchName ?? "",
-      branchAddr1: row.branchAddr1 ?? "",
-      branchAddr2: row.branchAddr2 ?? "",
-      branchAddr3: row.branchAddr3 ?? "",
+      branchAddress: row.branchAddress ?? "",
       branchTin: row.branchTin ?? "",
-      telNo: row.telNo ?? "",
-      zipCode: row.zipCode ?? "",
-      main: normalizeBranchType(row.main),
+      branchType: normalizeBranchType(row.branchType),
       active: String(row.active ?? "Y").toUpperCase() === "Y" ? "Y" : "N",
     });
 
@@ -242,6 +250,7 @@ const BranchRef = () => {
 
     console.log("Edit Row:", row);
     setIsEditing(true);
+    setIsFieldsExpanded(true);
   };
 
   // --- ACTIONS ---
@@ -355,7 +364,7 @@ const BranchRef = () => {
           <div className="flex gap-2 justify-center">
             <button
               onClick={() => handleEdit(row)}
-              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 bg-blue-50 border border-blue-100 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white transition-colors text-xs"
+              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 bg-blue-50 border border-blue-100 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white hover:shadow-sm active:scale-95 transition-all duration-150 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
               title="Edit"
             >
               <FontAwesomeIcon icon={faEdit} />
@@ -364,7 +373,7 @@ const BranchRef = () => {
 
             <button
               onClick={() => handleDelete(row)}
-              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 bg-red-50 border border-red-100 text-red-600 rounded-md hover:bg-red-600 hover:text-white transition-colors text-xs"
+              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 bg-red-50 border border-red-100 text-red-600 rounded-md hover:bg-red-600 hover:text-white hover:shadow-sm active:scale-95 transition-all duration-150 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
               title="Delete"
             >
               <FontAwesomeIcon icon={faTrashAlt} />
@@ -381,6 +390,11 @@ const BranchRef = () => {
         width: 120,
         minWidth: 120,
         requiredVisible: true,
+        render: (row) => (
+          <span className="font-mono text-[12px] font-semibold tracking-wide text-gray-700 dark:text-gray-200">
+            {row.branchCode}
+          </span>
+        ),
       },
       {
         key: "branchName",
@@ -396,14 +410,13 @@ const BranchRef = () => {
         sortable: true,
         width: 350,
         minWidth: 100,
-        render: (row) => getAddress(row),
-      },
-      {
-        key: "zipCode",
-        label: "Zip Code",
-        sortable: true,
-        width: 100,
-        minWidth: 100,
+        render: (row) => (
+          <span className="text-gray-600 dark:text-gray-300">
+            {getAddress(row) || (
+              <span className="italic text-gray-400">No address on file</span>
+            )}
+          </span>
+        ),
       },
       {
         key: "branchTin",
@@ -413,19 +426,24 @@ const BranchRef = () => {
         minWidth: 100,
       },
       {
-        key: "telNo",
-        label: "Contact No.",
-        sortable: true,
-        width: 150,
-        minWidth: 100,
-      },
-      {
-        key: "main",
+        key: "branchType",
         label: "Branch Type",
         sortable: true,
         width: 100,
         minWidth: 100,
-        render: (row) => getBranchTypeLabel(row.main),
+        render: (row) => {
+          const label = getBranchTypeLabel(row.branchType);
+          return (
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${
+                BRANCH_TYPE_STYLES[label] ||
+                "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200"
+              }`}
+            >
+              {label}
+            </span>
+          );
+        },
       },
       {
         key: "active",
@@ -433,7 +451,26 @@ const BranchRef = () => {
         sortable: true,
         width: 100,
         minWidth: 100,
-        render: (row) => getActiveLabel(row.active),
+        render: (row) => {
+          const isActive = String(row.active || "").toUpperCase() === "Y";
+          return (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${
+                isActive
+                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                  : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
+              }`}
+            >
+              <FontAwesomeIcon
+                icon={isActive ? faCircleCheck : faCircleXmark}
+                className={`text-[10px] ${
+                  isActive ? "text-emerald-500" : "text-gray-400"
+                }`}
+              />
+              {getActiveLabel(row.active)}
+            </span>
+          );
+        },
       },
     ],
     [getAddress, branches, selectedBranchCode, handleDelete],
@@ -464,7 +501,7 @@ const BranchRef = () => {
         <div className="w-full flex flex-col gap-1 md:grid md:grid-cols-3 md:items-center md:gap-0">
           {/* Left: Title */}
           <div className="w-full md:w-auto flex md:justify-start">
-            <h1 className="global-ref-headertext-ui w-full md:w-auto truncate text-center md:text-left">
+            <h1 className="global-ref-headertext-ui w-full md:w-auto flex items-center justify-center md:justify-start gap-2 truncate text-center md:text-left">
               {reftables[DOC_TYPE] || "Branch Reference"}
             </h1>
           </div>
@@ -484,7 +521,7 @@ const BranchRef = () => {
                       icon: faPlus,
                       onClick: startAdd,
                       className:
-                        "flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all",
+                        "flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150",
                     },
                     {
                       key: "save",
@@ -493,12 +530,12 @@ const BranchRef = () => {
                       ),
                       icon: faSave,
                       onClick: handleSave,
-                      disabled: !isEditing || isSaving,
-                      className: `flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md transition-all
+                      disabled: !isEditing || isSaving || !isFieldsExpanded,
+                      className: `flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md transition-all duration-150
                         ${
-                          !isEditing || isSaving
+                          !isEditing || isSaving || !isFieldsExpanded
                             ? "bg-blue-500 opacity-50 cursor-not-allowed text-white"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
+                            : "bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95"
                         }`,
                     },
                     {
@@ -509,7 +546,7 @@ const BranchRef = () => {
                       icon: faUndo,
                       onClick: resetForm,
                       className:
-                        "flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all",
+                        "flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150",
                     },
                   ]}
                 />
@@ -519,7 +556,7 @@ const BranchRef = () => {
               <div ref={guideRef} className="relative">
                 <button
                   onClick={() => setOpenGuide((v) => !v)}
-                  className="bg-blue-600 text-white h-7 w-8 sm:w-auto sm:h-8 sm:px-4 rounded-md flex items-center justify-center gap-1 hover:bg-blue-700 transition-all"
+                  className="bg-blue-600 text-white h-7 w-8 sm:w-auto sm:h-8 sm:px-4 rounded-md flex items-center justify-center gap-1 shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150"
                 >
                   <FontAwesomeIcon
                     icon={faInfoCircle}
@@ -530,19 +567,21 @@ const BranchRef = () => {
                   </span>
                   <FontAwesomeIcon
                     icon={faChevronDown}
-                    className="hidden sm:inline text-[10px] opacity-80"
+                    className={`hidden sm:inline text-[10px] opacity-80 transition-transform duration-200 ${
+                      isOpenGuide ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
 
                 {isOpenGuide && (
-                  <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800 overflow-hidden origin-top-right animate-[fadeIn_0.12s_ease-out]">
                     <button
                       onClick={() => {
                         if (pdfLink) window.open(pdfLink, "_blank");
                         setOpenGuide(false);
                       }}
                       disabled={!pdfLink}
-                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900 border-b border-gray-100 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900 border-b border-gray-100 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <FontAwesomeIcon
                         icon={faFilePdf}
@@ -557,7 +596,7 @@ const BranchRef = () => {
                         setOpenGuide(false);
                       }}
                       disabled={!videoLink}
-                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <FontAwesomeIcon
                         icon={faVideo}
@@ -576,122 +615,158 @@ const BranchRef = () => {
       {/* MAIN CONTENT */}
       <div className="mt-24 sm:mt-24 flex flex-col lg:flex-row lg:items-stretch gap-2">
         {/* LEFT: Form */}
-        <div className="flex-1 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700 shadow-lg grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-          {/* Column 1 */}
-          <div className="space-y-4">
-            <FieldRenderer
-              label="Branch Code"
-              required
-              type="text"
-              value={formData.branchCode}
-              disabled={!isEditing || (isEditing && !!selectedBranchCode)}
-              onChange={(v) =>
-                updateForm({ branchCode: (v || "").toUpperCase() })
-              }
-              onBlur={(e) => handleCheckDuplicate(e.target.value)}
-              maxLength={getMax("BRANCH_CODE")}
-            />
-
-            <FieldRenderer
-              label="Branch Name"
-              required
-              type="text"
-              value={formData.branchName}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ branchName: v })}
-              maxLength={getMax("BRANCH_NAME")}
-            />
-
-            <FieldRenderer
-              label="Address 1"
-              required
-              type="text"
-              value={formData.branchAddr1}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ branchAddr1: v })}
-              maxLength={getMax("BRANCH_ADDR1")}
-            />
-
-            <FieldRenderer
-              label="Address 2"
-              type="text"
-              value={formData.branchAddr2}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ branchAddr2: v })}
-              maxLength={getMax("BRANCH_ADDR2")}
-            />
-
-            <FieldRenderer
-              label="Address 3"
-              type="text"
-              value={formData.branchAddr3}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ branchAddr3: v })}
-              maxLength={getMax("BRANCH_ADDR3")}
-            />
+        <div
+          className={`flex-1 bg-white dark:bg-gray-800 p-4 rounded-xl border shadow-lg transition-colors duration-200 border-gray-100 dark:border-gray-700"
+          }`}
+        >
+          {/* Form status strip */}
+          <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100 dark:border-gray-700">
+            <div>
+              {/* <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                {isAdding
+                  ? "Branch Details"
+                  : selectedBranchCode
+                    ? "Edit Branch"
+                    : "Branch Details"}
+              </h2> */}
+              <p className="text-[14px] text-gray-500 mt-0.5">
+                {isEditing
+                  ? selectedBranchCode
+                    ? `Updating Record - ${selectedBranchCode}`
+                    : "Fill in the fields below to add a new branch"
+                  : "Select \u201cAdd\u201d or double-click a row to edit"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isEditing && (
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium ring-1 ring-inset ${
+                    isAdding
+                      ? "bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
+                      : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full animate-pulse ${
+                      isAdding ? "bg-blue-500" : "bg-amber-500"
+                    }`}
+                  />
+                  {isAdding ? "Adding" : "Editing"}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsFieldsExpanded((expanded) => !expanded)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
+                aria-expanded={isFieldsExpanded}
+                aria-controls="ref-branch-fields ref-branch-registration"
+              >
+                <FontAwesomeIcon
+                  icon={faChevronDown}
+                  className={`text-[10px] transition-transform duration-200 ${
+                    isFieldsExpanded ? "rotate-180" : ""
+                  }`}
+                />
+                {isFieldsExpanded ? "Collapse" : "Expand"}
+              </button>
+            </div>
           </div>
 
-          {/* Column 2 */}
-          <div className="space-y-4">
-            <FieldRenderer
-              label="TIN"
-              required
-              type="text"
-              value={formData.branchTin}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ branchTin: v })}
-              maxLength={getMax("BRANCH_TIN")}
-            />
+          <div
+            id="ref-branch-fields"
+            className={`grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 transition-all duration-200 ${
+              isFieldsExpanded
+                ? "opacity-100 max-h-[600px]"
+                : "hidden"
+            }`}
+          >
+            {/* Column 1 */}
+            <div className="space-y-4">
+              <FieldRenderer
+                label="Branch Code"
+                required
+                type="text"
+                value={formData.branchCode}
+                disabled={!isEditing || (isEditing && !!selectedBranchCode)}
+                onChange={(v) =>
+                  updateForm({ branchCode: (v || "").toUpperCase() })
+                }
+                onBlur={(e) => handleCheckDuplicate(e.target.value)}
+                maxLength={getMax("BRANCH_CODE")}
+              />
 
-            <FieldRenderer
-              label="Contact No."
-              type="text"
-              value={formData.telNo}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ telNo: v })}
-              maxLength={getMax("TEL_NO")}
-            />
+              <FieldRenderer
+                label="Branch Name"
+                required
+                type="text"
+                value={formData.branchName}
+                disabled={!isEditing}
+                onChange={(v) => updateForm({ branchName: v })}
+                maxLength={getMax("BRANCH_NAME")}
+              />
 
-            <FieldRenderer
-              label="Zip Code"
-              type="text"
-              value={formData.zipCode}
-              disabled={!isEditing}
-              onChange={(v) => updateForm({ zipCode: v })}
-              maxLength={getMax("ZIP_CODE")}
-            />
+              <FieldRenderer
+                label="Branch Address"
+                required
+                type="text"
+                value={formData.branchAddress}
+                disabled={!isEditing}
+                onChange={(v) => updateForm({ branchAddress: v })}
+                maxLength={getMax("BRANCH_ADDR1")}
+              />
+            </div>
 
-            <FieldRenderer
-              label="Branch Type"
-              type="select"
-              value={normalizeBranchType(formData.main)}
-              disabled={!isEditing}
-              options={BRANCH_TYPE_OPTIONS}
-              onChange={(v) => updateForm({ main: normalizeBranchType(v) })}
-            />
+            {/* Column 2 */}
+            <div className="space-y-4">
+              <FieldRenderer
+                label="TIN"
+                required
+                type="text"
+                value={formData.branchTin}
+                disabled={!isEditing}
+                onChange={(v) => updateForm({ branchTin: v })}
+                maxLength={getMax("BRANCH_TIN")}
+              />
 
-            <FieldRenderer
-              label="Active"
-              type="select"
-              value={formData.active === "Y" ? "Yes" : "No"}
-              disabled={!isEditing}
-              options={[
-                { value: "Yes", label: "Yes" },
-                { value: "No", label: "No" },
-              ]}
-              onChange={(v) => updateForm({ active: v === "No" ? "N" : "Y" })}
-            />
+              <FieldRenderer
+                label="Branch Type"
+                type="select"
+                value={normalizeBranchType(formData.branchType)}
+                disabled={!isEditing}
+                options={BRANCH_TYPE_OPTIONS}
+                onChange={(v) =>
+                  updateForm({ branchType: normalizeBranchType(v) })
+                }
+              />
+
+              <FieldRenderer
+                label="Active"
+                type="select"
+                value={formData.active === "Y" ? "Yes" : "No"}
+                disabled={!isEditing}
+                options={[
+                  { value: "Yes", label: "Yes" },
+                  { value: "No", label: "No" },
+                ]}
+                onChange={(v) => updateForm({ active: v === "No" ? "N" : "Y" })}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* RIGHT: Registration Info */}
-        <div className="w-full lg:w-[320px]">
-          <RegistrationInfo layout="stacked" data={registrationInfo} />
+          {/* Registration Info */}
+          <div
+            id="ref-branch-registration"
+            className={`mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 transition-all duration-200 ${
+              isFieldsExpanded ? "opacity-100" : "hidden"
+            }`}
+          >
+            <RegistrationInfo layout="straight" data={registrationInfo} />
+          </div>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="global-tran-table-main-div-ui mt-4">
+      <div className="global-tran-table-branchType-div-ui mt-4">
         <SearchGlobalReferenceTable
           docType={DOC_TYPE}
           columns={columns}
@@ -699,13 +774,14 @@ const BranchRef = () => {
           isLoading={isListLoading}
           onRowDoubleClick={handleEdit}
           itemsPerPage={50}
-          onRefresh={() => queryClient.invalidateQueries({ queryKey: ["branchList"] })}
-
-          // autoFillGrid="True"
+          onRefresh={() =>
+            queryClient.invalidateQueries({ queryKey: ["branchList"] })
+          }
+          autoFillGrid="True"
         />
       </div>
     </div>
   );
 };
 
-export default BranchRef;
+export default RefBranch;

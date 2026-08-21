@@ -89,10 +89,10 @@ export default function Dashboard1({ user: propUser }) {
           />
 
           <motion.div variants={itemVariants} className="mb-4">
-            <p className="text-[21px] font-bold tracking-[0.25em] text-blue-600 dark:text-blue-400 uppercase mb-7">
-              NAYSA Financials Cloud
+            <p className="text-xs sm:text-[21px] font-bold tracking-[0.05em] text-blue-600 dark:text-blue-400 uppercase mb-7">
+              NAYSA Human Resource Management System
             </p>
-            <h1 className="text-[34px] font-light text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-lg sm:text-[34px] font-light text-slate-900 dark:text-white tracking-tight">
               Hello,{" "}
               <span className="font-bold text-slate-900 dark:text-white">
                 {name}
@@ -109,22 +109,22 @@ export default function Dashboard1({ user: propUser }) {
             <img
               src="/NAYSA.jpg"
               alt="NAYSA Financials"
-              className="w-[250px] select-none rounded-lg"
+              className="w-[250px] select-none rounded-lg mt-2"
               draggable="false"
             />
           </motion.div>
 
-          <motion.span variants={itemVariants} className="text-[15px] text-slate-400 block mb-10">
+          <motion.span variants={itemVariants} className="text-xs sm:text-[15px] text-slate-400 block mb-10">
             We make life easier through business applications.
           </motion.span>
           
           {/* UPDATED: Footer area with App Version and User ID */}
           <motion.div variants={itemVariants} className="flex items-center gap-6 text-slate-400 dark:text-slate-600">
-            <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
+            <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
               APPLICATION DATE: {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'N/A'}
             </span>
-            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-            <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
+            <div className="hidden sm:inline h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+            <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
               ID: {user?.USER_CODE || "—"}
             </span>
           </motion.div>

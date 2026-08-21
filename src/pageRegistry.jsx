@@ -152,12 +152,12 @@ export const pageRegistry = {
   VATRef: lazyPage(() => import("./NAYSA Cloud/Reference File/VATRef.jsx")),
   CurrRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CurrRef.jsx")),
   DForexRef: lazyPage(() => import("./NAYSA Cloud/Reference File/DForexRef.jsx")),
-  BranchRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BranchRef.jsx")),
+  RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
   BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
-  UpdateUser: lazyPage(() => import("./NAYSA Cloud/Reference File/UpdateUser.jsx")),
-  UserAccessRights: lazyPage(() => import("./NAYSA Cloud/Reference File/UserAccessRights.jsx")),
-  MasterAccessRights: lazyPage(() => import("./NAYSA Cloud/Reference File/MasterAccessRights.jsx")),
-  ReportAccessRights: lazyPage(() => import("./NAYSA Cloud/Reference File/ReportAccessRights.jsx")),
+  UpdateUser: lazyPage(() => import("./NAYSA Cloud/Security/UpdateUser.jsx")),
+  UserAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/UserAccessRights.jsx")),
+  MasterAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/MasterAccessRights.jsx")),
+  ReportAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/ReportAccessRights.jsx")),
   ATaxCode: lazyPage(() => import("./NAYSA Cloud/Reference File/ATCRef.jsx")),
   BillCodeRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BillCodeRef.jsx")),
   LCRef: lazyPage(() => import("./NAYSA Cloud/Reference File/LCRef.jsx")),
@@ -230,6 +230,10 @@ export const pageRegistry = {
   PRInq: lazyPage(() => import("./NAYSA Cloud/Module/Main Module/Purchasing/PRInquiry.jsx")),
   POInq: lazyPage(() => import("./NAYSA Cloud/Module/Main Module/Purchasing/POInquiry.jsx")),
   JOInq: lazyPage(() => import("./NAYSA Cloud/Module/Main Module/Purchasing/JOInquiry.jsx")),
+
+
+
+  // Branch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
 
   // Printing (Universal Modal Mapping)
   APReportModal: reportModal("AP"),

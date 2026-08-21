@@ -468,6 +468,144 @@ export const useSwalDeleteConfirm = async (
 };
 
 
+// ============================================================
+// LOGOUT CONFIRMATION
+// ============================================================
+export const useSwalLogoutConfirm = async (
+  title = "Sign out?",
+  text = "Are you sure you want to sign out of your account?",
+  confirmText = "Sign Out",
+) => {
+  return await Swal.fire({
+    title,
+    text,
+
+    /*
+     * Question feels more appropriate for logout.
+     * Delete remains warning.
+     */
+    icon: "question",
+
+    showCancelButton: true,
+    reverseButtons: true,
+    focusCancel: true,
+
+    confirmButtonText: confirmText,
+    cancelButtonText: "Stay Logged In",
+
+    buttonsStyling: false,
+
+    width: "clamp(320px, 90vw, 400px)",
+    padding: "1.25rem",
+
+    customClass: {
+      popup: `
+        toast-glass
+        rounded-2xl
+        shadow-2xl
+        border
+        border-gray-200/70
+        dark:border-gray-700/70
+      `,
+
+      icon: `
+        !w-14
+        !h-14
+        !mt-2
+        !mb-2
+      `,
+
+      title: `
+        !text-[17px]
+        !font-semibold
+        !text-gray-800
+        dark:!text-gray-100
+        !m-0
+        !pt-1
+      `,
+
+      htmlContainer: `
+        !text-[12px]
+        !leading-5
+        !text-gray-500
+        dark:!text-gray-400
+        !mt-2
+        !mb-0
+      `,
+
+      actions: `
+        !w-full
+        !flex
+        !items-center
+        !gap-2
+        !mt-5
+        !mb-0
+      `,
+
+      confirmButton: `
+        !m-0
+        !h-9
+        !px-5
+        !rounded-lg
+
+        !bg-blue-600
+        hover:!bg-blue-700
+
+        !text-white
+        !text-[11px]
+        !font-semibold
+
+        !shadow-sm
+
+        focus:!outline-none
+        focus:!ring-2
+        focus:!ring-blue-500/30
+
+        !transition-all
+        !duration-150
+      `,
+
+      cancelButton: `
+        !m-0
+        !h-9
+        !px-5
+        !rounded-lg
+
+        !bg-white
+        dark:!bg-gray-700
+
+        !border
+        !border-gray-300
+        dark:!border-gray-600
+
+        !text-gray-700
+        dark:!text-gray-200
+
+        !text-[11px]
+        !font-medium
+
+        hover:!bg-gray-50
+        dark:hover:!bg-gray-600
+
+        focus:!outline-none
+        focus:!ring-2
+        focus:!ring-gray-400/20
+
+        !transition-all
+        !duration-150
+      `,
+    },
+
+    showClass: {
+      popup: "swal2-show toast-smooth-in",
+    },
+
+    hideClass: {
+      popup: "swal2-hide toast-smooth-out",
+    },
+  });
+};
+
 
 
 

@@ -372,7 +372,7 @@ body {
   /* REFERENCE FILES & MASTERDATA */
 
   .global-ref-main-div-ui {
-    @apply p-2 bg-gray-100 min-h-screen
+    @apply p-2 bg-gray-50 min-h-screen
     dark:bg-black;
   }
 

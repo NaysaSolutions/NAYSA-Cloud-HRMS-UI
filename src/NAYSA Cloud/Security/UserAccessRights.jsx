@@ -38,10 +38,10 @@ import { exportGenericQueryExcel } from "@/NAYSA Cloud/Global/report";
 
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 
-import UsersTab from "./UserAccessRightsTabs/UsersTab";
-import RolesTab from "./UserAccessRightsTabs/RolesTab";
-import RoleAccessTab from "./UserAccessRightsTabs/RoleAccessTab";
-import UserRoleTab from "./UserAccessRightsTabs/UserRoleTab";
+import UsersTab from "../UserAccessRightsTabs/UsersTab";
+import RolesTab from "../UserAccessRightsTabs/RolesTab";
+import RoleAccessTab from "../UserAccessRightsTabs/RoleAccessTab";
+import UserRoleTab from "../UserAccessRightsTabs/UserRoleTab";
 
 const getUserType = (row = {}) =>
   String(

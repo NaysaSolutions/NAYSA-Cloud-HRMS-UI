@@ -27,7 +27,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FiSun, FiMoon } from "react-icons/fi";
 import Swal from "sweetalert2";
 import {
-  useSwalDeleteConfirm,
+  useSwalLogoutConfirm,
   useSwalSuccessAlert,
   useSwalErrorAlert,
 } from "../Global/behavior";
@@ -277,23 +277,23 @@ const Navbar = ({
     [navigate, onBiometricClick]
   );
 
-  const handleLogoutClick = async () => {
-    setIsDropdownOpen(false);
+const handleLogoutClick = async () => {
+  setIsDropdownOpen(false);
 
-    try {
-      const result = await useSwalDeleteConfirm(
-        "Confirm Logout",
-        "Are you sure you want to logout?",
-        "Yes, logout!"
-      );
+  try {
+    const result = await useSwalLogoutConfirm(
+      "Sign out?",
+      "Are you sure you want to sign out of your account?",
+      "Sign Out"
+    );
 
-      if (result?.isConfirmed && onLogout) {
-        await onLogout();
-      }
-    } catch (error) {
-      console.error("Logout confirmation failed:", error);
+    if (result?.isConfirmed) {
+      await onLogout?.();
     }
-  };
+  } catch (error) {
+    console.error("Logout confirmation failed:", error);
+  }
+};
 
   const encodePassword = (value) => {
     try {
@@ -1084,7 +1084,7 @@ const Navbar = ({
     <>
       <div className="fixed left-0 top-0 z-[100] w-full border-b bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="flex h-12 w-full items-center justify-between px-4 text-sm dark:text-white sm:text-base">
-          <div className="flex items-center space-x-2 font-extrabold text-blue-900 dark:text-gray-100">
+          <div className="flex items-center space-x-2 font-extrabold text-blue-800 dark:text-gray-100">
             <motion.button
               type="button"
               whileTap={{ scale: 0.92 }}
@@ -1096,14 +1096,14 @@ const Navbar = ({
 
             <Link 
               to="/" 
-              className="flex items-center space-x-2 transition-opacity hover:opacity-80"
+              className="flex items-center space-x-0 transition-opacity hover:opacity-80"
             >
               <img
                 src="/naysa_logo.png"
                 className="h-[35px] w-[70px] object-contain"
                 alt="Logo"
               />
-              <span className="hidden md:inline">Financials</span>
+              <span className="hidden md:inline mt-1">Human Resource Management System</span>
             </Link>
 
           </div>

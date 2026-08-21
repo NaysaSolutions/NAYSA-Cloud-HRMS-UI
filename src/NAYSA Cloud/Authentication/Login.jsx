@@ -620,7 +620,7 @@ export default function Login({ onSwitchToRegister }) {
               NAYSA-SOLUTIONS INCORPORATED
             </div>
 
-            <h1 className="whitespace-nowrap text-4xl font-black uppercase leading-none tracking-[0.06em] text-white drop-shadow-[0_5px_18px_rgba(0,0,0,.45)] xl:text-5xl 2xl:text-6xl">
+            <h1 className="whitespace-nowrap text-4xl font-black uppercase leading-none tracking-[0.06em] text-white drop-shadow-[0_5px_18px_rgba(0,0,0,.45)] xl:text-5xl 2xl:text-5xl">
               WE MAKE LIFE EASIER
             </h1>
 
@@ -645,8 +645,8 @@ export default function Login({ onSwitchToRegister }) {
                   className="w-36 drop-shadow-[0_6px_18px_rgba(0,0,0,.35)] md:w-40"
                 />
 
-                <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,.5)] md:text-3xl">
-                  NAYSA Financials Cloud
+                <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-white drop-shadow-[0_4px_15px_rgba(0,0,0,.5)] md:text-3xl">
+                  NAYSA HRMS Cloud
                 </h1>
               </div>
 
