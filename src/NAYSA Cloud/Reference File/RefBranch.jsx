@@ -110,7 +110,7 @@ const RefBranch = () => {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [registrationInfo, setRegistrationInfo] = useState(INITIAL_REG);
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [isFieldsExpanded, setIsFieldsExpanded] = useState(false);
   const [selectedBranchCode, setSelectedBranchCode] = useState(null);
 
@@ -119,8 +119,7 @@ const RefBranch = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [tblFieldArray, setTblFieldArray] = useState([]);
 
-  const userCode =
-    user?.USER_CODE || user?.username || user?.userCode || "SYSTEM";
+  const userCode = user?.USER_CODE;
 
   const isAdding = isEditing && !selectedBranchCode;
 
@@ -157,10 +156,10 @@ const RefBranch = () => {
       const sqlRow = response?.data?.data?.[0];
       if (sqlRow?.errorcount > 0) {
         useSwalErrorAlert(
-          "Error",
+          "Unable to save",
           sqlRow?.errormsg || "Failed to save Branch.",
         );
-        resetForm(); // ✅ reset on failure
+        // resetForm(); // ✅ reset on failure
         return;
       }
 
@@ -176,7 +175,7 @@ const RefBranch = () => {
             response?.data?.data?.message ||
             "Failed to save Branch.",
         );
-        resetForm(); // ✅ reset on failure
+        // resetForm(); // ✅ reset on failure
         return;
       }
 
@@ -193,7 +192,7 @@ const RefBranch = () => {
           ? `HTTP ${error.response.status}`
           : error?.message || String(error),
       );
-      resetForm(); // ✅ reset on request error too
+      // resetForm(); // ✅ reset on request error too
     },
   });
 
@@ -431,11 +430,12 @@ const RefBranch = () => {
         sortable: true,
         width: 100,
         minWidth: 100,
+        className: "!p-0",
         render: (row) => {
           const label = getBranchTypeLabel(row.branchType);
           return (
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${
+              className={`flex min-h-[28px] w-full items-center justify-center px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
                 BRANCH_TYPE_STYLES[label] ||
                 "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200"
               }`}
@@ -451,11 +451,12 @@ const RefBranch = () => {
         sortable: true,
         width: 100,
         minWidth: 100,
+        className: "!p-0",
         render: (row) => {
           const isActive = String(row.active || "").toUpperCase() === "Y";
           return (
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${
+              className={`flex min-h-[28px] w-full items-center justify-center gap-1.5 px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
                 isActive
                   ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
                   : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
@@ -481,7 +482,7 @@ const RefBranch = () => {
     let mounted = true;
 
     (async () => {
-      const res = await useFieldLenghtCheck("BRANCH_REF");
+      const res = await useFieldLenghtCheck("REF_BRANCH");
       if (mounted) setTblFieldArray(res || []);
     })();
 
@@ -629,7 +630,7 @@ const RefBranch = () => {
                     ? "Edit Branch"
                     : "Branch Details"}
               </h2> */}
-              <p className="text-[14px] text-gray-500 mt-0.5">
+              <p className="text-[11px] sm:text-[14px] p-1.5 text-gray-500 mt-0.5">
                 {isEditing
                   ? selectedBranchCode
                     ? `Updating Record - ${selectedBranchCode}`
@@ -712,7 +713,7 @@ const RefBranch = () => {
                 value={formData.branchAddress}
                 disabled={!isEditing}
                 onChange={(v) => updateForm({ branchAddress: v })}
-                maxLength={getMax("BRANCH_ADDR1")}
+                maxLength={getMax("BRANCH_ADDRESS")}
               />
             </div>
 
