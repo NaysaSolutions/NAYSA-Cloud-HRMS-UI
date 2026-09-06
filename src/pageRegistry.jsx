@@ -147,7 +147,7 @@ export const pageRegistry = {
   SearchPPETag: lazyPage(() => import("./NAYSA Cloud/Lookup/SearchPPETag.jsx")),
 
   // Global Reference
-  Company: lazyPage(() => import("./NAYSA Cloud/Reference File/Company.jsx")),
+  RefCompany: lazyPage(() => import("./NAYSA Cloud/Reference File/RefCompany.jsx")),
   CutoffRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CutoffRef.jsx")),
   VATRef: lazyPage(() => import("./NAYSA Cloud/Reference File/VATRef.jsx")),
   CurrRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CurrRef.jsx")),

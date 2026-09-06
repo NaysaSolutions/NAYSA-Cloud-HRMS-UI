@@ -62,23 +62,14 @@ const BRANCH_TYPE_OPTIONS = [
 
 // Visual language for the Branch Type badge shown in the table.
 const BRANCH_TYPE_STYLES = {
-  Main: "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200",
+  Main: "bg-indigo-100 text-indigo-800 ring-1 ring-inset ring-indigo-200",
   Branch: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
-  "Company Store":
-    "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
-  Franchisee:
-    "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200",
 };
 
 const normalizeBranchType = (value) => {
   const v = String(value || "").trim().toUpperCase();
 
   if (v === "MAIN") return "Main";
-  if (v === "COMPANY STORE" || v === "COMPANYSTORE" || v === "COMPANY") {
-    return "Company Store";
-  }
-  if (v === "FRANCHISEE" || v === "FRANCHISE") return "Franchisee";
-
   return "Branch";
 };
 
@@ -430,12 +421,12 @@ const RefBranch = () => {
         sortable: true,
         width: 100,
         minWidth: 100,
-        className: "!p-0",
+        className: "!px-2",
         render: (row) => {
           const label = getBranchTypeLabel(row.branchType);
           return (
             <span
-              className={`flex min-h-[28px] w-full items-center justify-center px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
+              className={`flex min-h-[28px] w-full items-center justify-center rounded-full px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
                 BRANCH_TYPE_STYLES[label] ||
                 "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200"
               }`}
@@ -451,12 +442,12 @@ const RefBranch = () => {
         sortable: true,
         width: 100,
         minWidth: 100,
-        className: "!p-0",
+        className: "!px-2",
         render: (row) => {
           const isActive = String(row.active || "").toUpperCase() === "Y";
           return (
             <span
-              className={`flex min-h-[28px] w-full items-center justify-center gap-1.5 px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
+              className={`flex min-h-[28px] w-full items-center justify-center gap-1.5 rounded-full px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
                 isActive
                   ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
                   : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
@@ -767,7 +758,7 @@ const RefBranch = () => {
       </div>
 
       {/* TABLE */}
-      <div className="global-tran-table-branchType-div-ui mt-4">
+      <div className="global-tran-table-main-div-ui mt-4">
         <SearchGlobalReferenceTable
           docType={DOC_TYPE}
           columns={columns}

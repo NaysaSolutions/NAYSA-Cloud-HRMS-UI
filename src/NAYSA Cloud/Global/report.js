@@ -2237,7 +2237,8 @@ export const exportGenericQueryExcel = async (
   setMeta(currentRowIndex, 1, compAddr || "");
   currentRowIndex++;
 
-  setMeta(currentRowIndex, 1, `Tel No: ${telNo || ""}`);
+  // setMeta(currentRowIndex, 1, `Tel No: ${telNo || ""}`);
+  setMeta(currentRowIndex, 1);
   currentRowIndex++;
 
   worksheet.getCell(currentRowIndex, 1).value =

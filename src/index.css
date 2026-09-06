@@ -520,24 +520,56 @@ body {
 }
 
 .global-ref-floating-label {
-  @apply absolute start-2 -top-2 z-10 origin-[0] scale-75 transform 
-                    bg-white px-1 text-xs text-gray-400 transition-all 
+  @apply absolute start-1 -top-[8px] sm:start-2 sm:-top-[14px] z-10 origin-[0] scale-75 transform
+                    bg-white px-2 text-xs text-gray-400 transition-all
                     peer-placeholder-shown:top-1/2 
                     peer-placeholder-shown:-translate-y-1/2 
-                    peer-placeholder-shown:scale-100 
-                    peer-focus:-top-2
-                    peer-focus:scale-75 
+                    peer-placeholder-shown:scale-100
+                    peer-placeholder-shown:rounded-md
+                    peer-placeholder-shown:px-1
+                    peer-focus:-top-[14px]
+                    peer-focus:scale-75
+                    rounded-t-3xl rounded-b-none
                     peer-focus:text-blue-600
                     dark:bg-gray-600 dark:text-white dark:peer-focus:text-white;
 }
 
+/* Keep an empty field label inside the control. The explicit sibling rule
+   covers the FieldRenderer DOM when the generated peer utility is unavailable. */
+.peer:placeholder-shown ~ .global-ref-floating-label {
+  top: 50%;
+  transform: translateY(-50%) scale(1);
+  border-radius: 0.375rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.peer:focus ~ .global-ref-floating-label {
+  top: -8px;
+  transform: scale(0.75);
+  border-radius: 1.875rem 1.875rem 0 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .peer:focus ~ .global-ref-floating-label {
+    top: -14px;
+  }
+}
+
+.global-ref-floating-label {
+  pointer-events: none;
+}
+
 .global-ref-label-enabled {
-  @apply bg-white text-gray-600 text-xs sm:text-sm
+  @apply bg-white text-gray-600 text-xs sm:text-base
           dark:bg-gray-600 dark:text-white dark:peer-focus:text-white;
 }
 
 .global-ref-label-disabled {
-  @apply bg-white text-gray-600 text-xs sm:text-sm
+  @apply bg-white text-gray-600 text-xs sm:text-base 
           dark:bg-gray-600 dark:text-white dark:peer-focus:text-white;
 }
 

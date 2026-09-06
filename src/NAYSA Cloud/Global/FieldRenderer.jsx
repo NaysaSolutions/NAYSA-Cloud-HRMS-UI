@@ -92,11 +92,12 @@ const FieldRenderer = ({
   const labelClass = `
     global-ref-floating-label field-renderer-floating-label-clean
     ${isEnabled ? "global-ref-label-enabled" : "global-ref-label-disabled"}
-    !text-slate-600
+    !text-slate-700
     dark:!text-slate-300
+    
     ${isEnabled
       ? "!bg-white dark:!bg-slate-700"
-      : "!bg-slate-100 dark:!bg-slate-800"
+      : "!bg-slate-100 dark:!bg-slate-800 !px-2"
     }
     ${labelClassName}
   `;
@@ -217,13 +218,10 @@ const FieldRenderer = ({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full mb-1 sm:mb-2.5">
       <style>{`
         .field-renderer-floating-label-clean.global-ref-floating-label {
           box-shadow: none !important;
-          border-radius: 0 !important;
-          padding-left: 2px !important;
-          padding-right: 2px !important;
         }
 
         .field-renderer-floating-label-clean.global-ref-floating-label::before,
@@ -371,7 +369,7 @@ const FieldRenderer = ({
             >
               <SelectTrigger
                 id={inputId}
-                className={`${sharedClasses} flex items-center justify-between !bg-transparent !leading-none !pr-12 [&>svg]:hidden`}
+                className={`${sharedClasses} flex items-center justify-between !leading-none !pr-12 [&>svg]:hidden`}
               >
                 <SelectValue placeholder={placeholder} />
               </SelectTrigger>

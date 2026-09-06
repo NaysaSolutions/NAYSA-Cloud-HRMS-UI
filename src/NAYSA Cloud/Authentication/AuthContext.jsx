@@ -680,11 +680,11 @@ export default function AuthProvider({ children }) {
         const nextAllDropDown =
           nextGlobalTables?.allDropdown ?? null;
 
-        const nextAllVATList =
-          nextGlobalTables?.vatList ?? null;
+        // const nextAllVATList =
+        //   nextGlobalTables?.vatList ?? null;
 
-        const nextAllATCList =
-          nextGlobalTables?.atcList ?? null;
+        // const nextAllATCList =
+        //   nextGlobalTables?.atcList ?? null;
 
         const nextAllHSDoc =
           nextGlobalTables?.hsDoc ?? null;
@@ -694,8 +694,8 @@ export default function AuthProvider({ children }) {
         setGlobalTables(nextGlobalTables);
         setCompanyInfo(nextCompanyInfo);
         setallDropDown(nextAllDropDown);
-        setAllVATList(nextAllVATList);
-        setAllATCList(nextAllATCList);
+        // setAllVATList(nextAllVATList);
+        // setAllATCList(nextAllATCList);
         setAllHSDoc(nextAllHSDoc);
         setRefsLoaded(true);
 
@@ -705,8 +705,8 @@ export default function AuthProvider({ children }) {
           currentUserRow: nextUserRow,
           currentMenu: nextCurrentMenu,
           globalTables: nextGlobalTables,
-          allVATList: nextAllVATList,
-          allATCList: nextAllATCList,
+          // allVATList: nextAllVATList,
+          // allATCList: nextAllATCList,
           allHSDoc: nextAllHSDoc,
           refsLoaded: true,
         });

@@ -1099,8 +1099,8 @@ const SearchGlobalReferenceTable = forwardRef(
           fileName,
           currentUserRow?.userName,
           companyInfo?.compName,
-          companyInfo?.compAddr,
-          companyInfo?.telNo,
+          companyInfo?.compAddress,
+          // companyInfo?.compTelNo,
         );
         return;
       }
