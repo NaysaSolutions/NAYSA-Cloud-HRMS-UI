@@ -17,6 +17,8 @@ export const reftables = {
 
     // Reference Files
     Branch: "Branch Codes",
+    GovtSSS: "SSS Contribution Reference",
+    GovtTAX: "Withholding Tax Table",
     BankType: "Bank Type Codes",
     UserAccRight: "User Access Rights",
     Company: "Company ID",
