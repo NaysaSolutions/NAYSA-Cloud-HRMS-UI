@@ -156,7 +156,7 @@ export const pageRegistry = {
   BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
   UpdateUser: lazyPage(() => import("./NAYSA Cloud/Security/UpdateUser.jsx")),
   UserAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/UserAccessRights.jsx")),
-  MasterAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/MasterAccessRights.jsx")),
+  MasterDataAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/MasterAccessRights.jsx")),
   ReportAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/ReportAccessRights.jsx")),
   ATaxCode: lazyPage(() => import("./NAYSA Cloud/Reference File/ATCRef.jsx")),
   BillCodeRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BillCodeRef.jsx")),
@@ -166,6 +166,10 @@ export const pageRegistry = {
   WarehouseLocation: lazyPage(() => import("./NAYSA Cloud/Master Data/Inventory/WareMast.jsx")),
   UOM: lazyPage(() => import("./NAYSA Cloud/Master Data/Inventory/UOM.jsx")),
   QualityStat: lazyPage(() => import("./NAYSA Cloud/Master Data/Inventory/QualityStat.jsx")),
+
+
+  //ACCESS RIGHTS (HRMS)
+  UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
 
   // Posting
   PostSVI: lazyPage(() => import("./NAYSA Cloud/Module/Main Module/Accounts Receivable/PostSVI.jsx")),
