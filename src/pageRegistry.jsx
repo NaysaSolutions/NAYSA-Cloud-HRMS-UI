@@ -148,15 +148,22 @@ export const pageRegistry = {
 
   // Global Reference
   RefCompany: lazyPage(() => import("./NAYSA Cloud/Reference File/RefCompany.jsx")),
+  RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
+  RefHoliday: lazyPage(() => import("./NAYSA Cloud/Reference File/RefHoliday.jsx")),
+
+
   CutoffRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CutoffRef.jsx")),
   VATRef: lazyPage(() => import("./NAYSA Cloud/Reference File/VATRef.jsx")),
   CurrRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CurrRef.jsx")),
   DForexRef: lazyPage(() => import("./NAYSA Cloud/Reference File/DForexRef.jsx")),
+<<<<<<< Updated upstream
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
   RefGovtSSS: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
   RefGovtTAX: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefTaxTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefSSSTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
+=======
+>>>>>>> Stashed changes
   BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
   UpdateUser: lazyPage(() => import("./NAYSA Cloud/Security/UpdateUser.jsx")),
   UserAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/UserAccessRights.jsx")),
