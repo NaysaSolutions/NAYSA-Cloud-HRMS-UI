@@ -156,14 +156,11 @@ export const pageRegistry = {
   VATRef: lazyPage(() => import("./NAYSA Cloud/Reference File/VATRef.jsx")),
   CurrRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CurrRef.jsx")),
   DForexRef: lazyPage(() => import("./NAYSA Cloud/Reference File/DForexRef.jsx")),
-<<<<<<< Updated upstream
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
   RefGovtSSS: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
   RefGovtTAX: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefTaxTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefSSSTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
-=======
->>>>>>> Stashed changes
   BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
   UpdateUser: lazyPage(() => import("./NAYSA Cloud/Security/UpdateUser.jsx")),
   UserAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/UserAccessRights.jsx")),
@@ -181,6 +178,7 @@ export const pageRegistry = {
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
+  RefShift: lazyPage(() => import("./NAYSA Cloud/Reference File/RefShift.jsx")),
 
   // Posting
   PostSVI: lazyPage(() => import("./NAYSA Cloud/Module/Main Module/Accounts Receivable/PostSVI.jsx")),
