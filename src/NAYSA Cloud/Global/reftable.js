@@ -1,7 +1,3 @@
-import BankMast from "../Master Data/BankMast";
-import COAMast from "../Master Data/ChartofAccounts/COAMast";
-import BillCodeRef from "../Reference File/BillCodeRef";
-import CutoffRef from "../Reference File/CutoffRef";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 
 import {
@@ -19,6 +15,8 @@ export const reftables = {
     Branch: "Branch Codes",
     GovtSSS: "SSS Contribution Reference",
     GovtTAX: "Withholding Tax Table",
+    Holiday: "Holiday Codes",
+    Employee: "Employee Masterdata",
     BankType: "Bank Type Codes",
     UserAccRight: "User Access Rights",
     Company: "Company ID",

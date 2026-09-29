@@ -621,7 +621,7 @@ const RefBranch = () => {
                     ? "Edit Branch"
                     : "Branch Details"}
               </h2> */}
-              <p className="text-[11px] sm:text-[14px] p-1.5 text-gray-500 mt-0.5">
+              <p className="text-[11px] sm:text-[14px] p-1.5 text-blue-600 font-semibold mt-0.5">
                 {isEditing
                   ? selectedBranchCode
                     ? `Updating Record - ${selectedBranchCode}`

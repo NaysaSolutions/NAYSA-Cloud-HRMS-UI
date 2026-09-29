@@ -54,18 +54,23 @@ const RefHoliday = () => {
   const { data: areas = [] } = useQuery({
     queryKey: ["areaListForHoliday"],
     queryFn: async () => {
-      try {
-        const { data } = await apiClient.get("/area");
-        const raw = data?.data?.[0]?.result || data?.[0]?.result || data?.result;
-        return raw ? JSON.parse(raw) : [];
-      } catch { return []; }
+      const { data } = await apiClient.get("/area");
+
+      const raw =
+        data?.data?.[0]?.result ||
+        data?.[0]?.result ||
+        data?.result;
+
+      return raw ? JSON.parse(raw) : [];
     },
   });
 
-  const areaOptions = useMemo(() => [
-    { value: "", label: "All Areas / Nationwide" },
-    ...areas.map((x) => ({ value: x.areaCode ?? x.AREA_CODE ?? "", label: x.areaName ?? x.AREA_NAME ?? x.areaCode ?? x.AREA_CODE ?? "" })),
-  ], [areas]);
+  const areaOptions = areas
+  .filter((row) => String(row.active || "").toUpperCase() === "Y")
+  .map((row) => ({
+    value: row.areaCode,
+    label: `${row.areaName}`,
+  }));
 
   const resetForm = () => {
     setFormData(INITIAL_FORM); setRegistrationInfo(INITIAL_REG); setSelectedCode(null);
@@ -157,12 +162,70 @@ const RefHoliday = () => {
         { key:"save", label:<span className="hidden sm:inline ml-1">Save</span>, icon:faSave, onClick:handleSave, disabled:!isEditing || isSaving || !isFieldsExpanded, className:"flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white disabled:opacity-50" },
         { key:"reset", label:<span className="hidden sm:inline ml-1">Reset</span>, icon:faUndo, onClick:resetForm, className:"flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white" },
       ]}/>
-      <div ref={guideRef} className="relative"><button onClick={() => setOpenGuide(v => !v)} className="bg-blue-600 text-white h-8 px-3 rounded-md"><FontAwesomeIcon icon={faInfoCircle}/> <span className="hidden sm:inline">Info</span> <FontAwesomeIcon icon={faChevronDown}/></button>{isOpenGuide && <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white z-[60] overflow-hidden"><button onClick={() => { if(pdfLink) window.open(pdfLink,"_blank"); setOpenGuide(false); }} disabled={!pdfLink} className="block w-full text-left px-4 py-2 text-xs"><FontAwesomeIcon icon={faFilePdf} className="mr-2 text-red-500"/>PDF Guide</button><button onClick={() => { if(videoLink) window.open(videoLink,"_blank"); setOpenGuide(false); }} disabled={!videoLink} className="block w-full text-left px-4 py-2 text-xs"><FontAwesomeIcon icon={faVideo} className="mr-2 text-blue-500"/>Video Guide</button></div>}</div>
+
+
+              {/* Info Dropdown */}
+              <div ref={guideRef} className="relative">
+                <button
+                  onClick={() => setOpenGuide((v) => !v)}
+                  className="bg-blue-600 text-white h-7 w-8 sm:w-auto sm:h-8 sm:px-4 rounded-md flex items-center justify-center gap-1 shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150"
+                >
+                  <FontAwesomeIcon
+                    icon={faInfoCircle}
+                    className="text-[12px]"
+                  />
+                  <span className="hidden sm:inline ml-1 text-[11px] font-medium">
+                    Info
+                  </span>
+                  <FontAwesomeIcon
+                    icon={faChevronDown}
+                    className={`hidden sm:inline text-[10px] opacity-80 transition-transform duration-200 ${
+                      isOpenGuide ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {isOpenGuide && (
+                  <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800 overflow-hidden origin-top-right animate-[fadeIn_0.12s_ease-out]">
+                    <button
+                      onClick={() => {
+                        if (pdfLink) window.open(pdfLink, "_blank");
+                        setOpenGuide(false);
+                      }}
+                      disabled={!pdfLink}
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900 border-b border-gray-100 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FontAwesomeIcon
+                        icon={faFilePdf}
+                        className="mr-2 text-red-500"
+                      />{" "}
+                      PDF Guide
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (videoLink) window.open(videoLink, "_blank");
+                        setOpenGuide(false);
+                      }}
+                      disabled={!videoLink}
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FontAwesomeIcon
+                        icon={faVideo}
+                        className="mr-2 text-blue-500"
+                      />{" "}
+                      Video Guide
+                    </button>
+                  </div>
+                )}
+              </div>
+
+      {/* <div ref={guideRef} className="relative"><button onClick={() => setOpenGuide(v => !v)} className="bg-blue-600 text-white h-8 px-3 rounded-md"><FontAwesomeIcon icon={faInfoCircle}/> <span className="hidden sm:inline">Info</span> <FontAwesomeIcon icon={faChevronDown}/></button>{isOpenGuide && <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white z-[60] overflow-hidden"><button onClick={() => { if(pdfLink) window.open(pdfLink,"_blank"); setOpenGuide(false); }} disabled={!pdfLink} className="block w-full text-left px-4 py-2 text-xs"><FontAwesomeIcon icon={faFilePdf} className="mr-2 text-red-500"/>PDF Guide</button><button onClick={() => { if(videoLink) window.open(videoLink,"_blank"); setOpenGuide(false); }} disabled={!videoLink} className="block w-full text-left px-4 py-2 text-xs"><FontAwesomeIcon icon={faVideo} className="mr-2 text-blue-500"/>Video Guide</button></div>}</div> */}
       </div>
     </div></div>
 
     <div className="mt-24 sm:mt-24 flex flex-col lg:flex-row lg:items-stretch gap-2"><div className="flex-1 bg-white dark:bg-gray-800 p-4 rounded-xl border shadow-lg border-gray-100 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100 dark:border-gray-700"><p className="text-[11px] sm:text-[14px] p-1.5 text-gray-500">{isEditing ? selectedCode ? `Updating Record - ${selectedCode}` : "Fill in the fields below to add a new holiday" : "Select “Add” or double-click a row to edit"}</p><div className="flex items-center gap-2">{isEditing && <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium ${isAdding ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>{isAdding ? "Adding" : "Editing"}</span>}<button type="button" onClick={() => setIsFieldsExpanded(v => !v)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-blue-600 bg-blue-50"><FontAwesomeIcon icon={faChevronDown} className={isFieldsExpanded ? "rotate-180" : ""}/>{isFieldsExpanded ? "Collapse" : "Expand"}</button></div></div>
+      <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100 dark:border-gray-700"><p className="text-[11px] sm:text-[14px] p-1.5 text-blue-600 font-semibold">{isEditing ? selectedCode ? `Updating Record - ${selectedCode}` : "Fill in the fields below to add a new holiday" : "Select “Add” or double-click a row to edit"}</p><div className="flex items-center gap-2">{isEditing && <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium ${isAdding ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>{isAdding ? "Adding" : "Editing"}</span>}<button type="button" onClick={() => setIsFieldsExpanded(v => !v)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-blue-600 bg-blue-50"><FontAwesomeIcon icon={faChevronDown} className={isFieldsExpanded ? "rotate-180" : ""}/>{isFieldsExpanded ? "Collapse" : "Expand"}</button></div></div>
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 ${isFieldsExpanded ? "" : "hidden"}`}>
         <div className="space-y-4">
           <FieldRenderer label="Holiday Code" required type="text" value={formData.holCode} disabled={!isEditing || !!selectedCode} onChange={(v) => updateForm({holCode:(v||"").toUpperCase()})} onBlur={(e) => handleCheckDuplicate(e.target.value)} maxLength={getMax("HOL_CODE")}/>
