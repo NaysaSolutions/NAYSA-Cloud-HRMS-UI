@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faSave, faUndo, faTrashAlt, faInfoCircle, faChevronDown, faFilePdf, faVideo } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faSave, faUndo, faTrashAlt, faInfoCircle, faChevronDown, faFilePdf, faVideo, faDownload, faUpload } from "@fortawesome/free-solid-svg-icons";
 
 import { apiClient, getTenant } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import { useAuth } from "@/NAYSA Cloud/Authentication/AuthContext.jsx";
@@ -473,9 +473,15 @@ const TaxSchedule = () => {
               {isOpenOptions && (
                 <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800 overflow-hidden">
                   <button type="button" onClick={downloadTemplate}
-                    className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900">Download Template</button>
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-xs hover:bg-blue-50 dark:hover:bg-blue-900">
+                    <FontAwesomeIcon icon={faDownload} className="text-emerald-600" />
+                    Download Template
+                  </button>
                   <button type="button" onClick={() => { setOpenOptions(false); uploadRef.current?.click(); }}
-                    className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900">Upload Template</button>
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-xs hover:bg-blue-50 dark:hover:bg-blue-900">
+                    <FontAwesomeIcon icon={faUpload} className="text-blue-600" />
+                    Upload Template
+                  </button>
                 </div>
               )}
               <input ref={uploadRef} type="file" accept=".xlsx" className="hidden" aria-label="Upload TAX template" onChange={uploadTemplate} />

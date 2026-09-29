@@ -19,47 +19,35 @@ import {
 } from "@/NAYSA Cloud/Global/behavior.jsx";
 
 // Government table helpers
-const sssFields = [
+const hdmfFields = [
   { key: "lwLimit", label: "Lower Limit" },
   { key: "upLimit", label: "Upper Limit" },
-  { key: "salCredit", label: "Monthly Salary Credit" },
-  { key: "mpfSc", label: "MPF Salary Credit" },
   { key: "employer", label: "Employer (ER)" },
   { key: "employee", label: "Employee (EE)" },
-  { key: "totalCont", label: "Total" },
-  { key: "empEmpr", label: "EC (ER)" },
-  { key: "empEmp", label: "EC (EE)" },
-  { key: "totalEc", label: "Total" },
-  { key: "mpfEmpr", label: "WISP (ER)" },
-  { key: "mpfEmp", label: "WISP (EE)" },
-  { key: "totalMpf", label: "Total" },
-  { key: "totalEmpr", label: "Total (ER)" },
-  { key: "totalEmp", label: "Total (EE)" },
-  { key: "total", label: "Total Contribution" },
 ];
 
 
 
 
-const normalizeSssAmount = (value) => {
+const normalizeHdmfAmount = (value) => {
   const text = String(value ?? "").trim();
   if (!text || !/^\d{0,16}(?:\.\d{0,2})?$/.test(text) || text === ".") return text;
   const [whole, fraction = ""] = text.split(".");
   return `${(whole || "0").replace(/^0+(?=\d)/, "")}.${fraction.padEnd(2, "0")}`;
 };
 
-const formatSssAmount = (value) => {
-  const text = normalizeSssAmount(value);
+const formatHdmfAmount = (value) => {
+  const text = normalizeHdmfAmount(value);
   const [whole, fraction] = text.split(".");
   return fraction?.length === 2 ? `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${fraction}` : text;
 };
 
-const isSssAmountInput = (value) => /^\d{0,16}(?:\.\d{0,2})?$/.test(value);
+const isHdmfAmountInput = (value) => /^\d{0,16}(?:\.\d{0,2})?$/.test(value);
 
 
 
 
-const createSssRow = (rows) => {
+const createHdmfRow = (rows) => {
   const usedCodes = new Set(rows.map((row) => String(row.orderNo).trim().toUpperCase()));
   let orderNo = "";
   for (let number = 1; number <= 999; number += 1) {
@@ -72,7 +60,8 @@ const createSssRow = (rows) => {
   return {
     __idx: crypto.randomUUID(),
     orderNo,
-    ...Object.fromEntries(sssFields.map(({ key }) => [key, ""])),
+    calcType: "A",
+    ...Object.fromEntries(hdmfFields.map(({ key }) => [key, ""])),
   };
 };
 
@@ -87,7 +76,7 @@ const toCents = (value) => {
 
 
 
-const validateSssRows = (rows) => {
+const validateHdmfRows = (rows) => {
   if (!rows.length) return "At least one bracket is required. An empty schedule cannot be saved.";
   const codes = new Set();
   const ranges = [];
@@ -96,10 +85,13 @@ const validateSssRows = (rows) => {
     if (!code || code.length > 3) return "Each order number is required and must not exceed 3 characters.";
     if (codes.has(code.toUpperCase())) return `Duplicate order number: ${code}.`;
     codes.add(code.toUpperCase());
-    for (const { key, label } of sssFields) {
+    for (const { key, label } of hdmfFields) {
       if (!/^\d{1,16}(?:\.\d{1,2})?$/.test(String(row[key] ?? "").trim())) {
         return `Row ${code}: ${label} requires a nonnegative amount with up to two decimal places.`;
       }
+    }
+    if (!["A", "P"].includes(String(row.calcType ?? "").trim().toUpperCase())) {
+      return `Row ${code}: Calculation Type must be A (Amount) or P (Percentage).`;
     }
     const lower = toCents(row.lwLimit);
     const upper = toCents(row.upLimit);
@@ -118,13 +110,14 @@ const validateSssRows = (rows) => {
 
 
 
-const getSssPayload = (rows, userCode) => ({
+const getHdmfPayload = (rows, userCode) => ({
   jsonData: JSON.stringify({
     jsonData: {
       userCode,
       rows: rows.map((row) => ({
         orderNo: String(row.orderNo).trim(),
-        ...Object.fromEntries(sssFields.map(({ key }) => [key, String(row[key]).trim()])),
+        calcType: String(row.calcType).trim().toUpperCase(),
+        ...Object.fromEntries(hdmfFields.map(({ key }) => [key, String(row[key]).trim()])),
       })),
     },
   }),
@@ -133,16 +126,20 @@ const getSssPayload = (rows, userCode) => ({
 
 
 // Page configuration
-const docType = "GovtSSS";
+const docType = "GovtHDMF";
 const emptyRows = [];
-const templateColumns = [{ key: "orderNo", label: "Number" }, ...sssFields];
+const templateColumns = [{ key: "orderNo", label: "Number" }, ...hdmfFields, { key: "calcType", label: "Calculation Type (A/P)" }];
 const toolbarClass = "flex items-center justify-center gap-2 h-8 px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed";
 const cellClass = "global-ref-textbox-enabled !h-7 !min-h-0 !px-2 !py-1 !text-[11px] !rounded-md !bg-white !text-slate-900 dark:!bg-slate-700 dark:!text-slate-100 dark:!border-slate-600 focus:!border-blue-500 tabular-nums";
+const calcTypeStyles = {
+  A: "bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:ring-indigo-700",
+  P: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:ring-sky-700",
+};
 
 
 
 
-const SssSchedule = () => {
+const HdmfSchedule = () => {
   // State and reference data
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -159,7 +156,7 @@ const SssSchedule = () => {
   const [isOpenGuide, setOpenGuide] = useState(false);
   const userCode = user?.USER_CODE;
   const tenantCode = getTenant();
-  const queryKey = useMemo(() => ["govSssList", tenantCode, userCode], [tenantCode, userCode]);
+  const queryKey = useMemo(() => ["govHdmfList", tenantCode, userCode], [tenantCode, userCode]);
   const pdfLink = reftablesPDFGuide[docType];
   const videoLink = reftablesVideoGuide[docType];
 
@@ -168,13 +165,13 @@ const SssSchedule = () => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const { data } = await apiClient.get("/govSss");
+      const { data } = await apiClient.get("/govHdmf");
       const result = data?.data?.[0];
       if (data?.success === false || result?.errorCount > 0 || typeof result?.result !== "string") {
-        throw new Error(result?.errorMsg || data?.message || "Unable to load the SSS schedule.");
+        throw new Error(result?.errorMsg || data?.message || "Unable to load the HDMF schedule.");
       }
       const rows = JSON.parse(result.result);
-      if (!Array.isArray(rows)) throw new Error("The SSS schedule response is invalid.");
+      if (!Array.isArray(rows)) throw new Error("The HDMF schedule response is invalid.");
       return rows.map((row) => ({ ...row, __idx: crypto.randomUUID() }));
     },
   });
@@ -188,10 +185,10 @@ const SssSchedule = () => {
   // Save the complete schedule
   const { mutateAsync: saveSchedule, isPending: isSaving } = useMutation({
     mutationFn: async (payload) => {
-      const { data } = await apiClient.post("/upsertGovSss", payload);
+      const { data } = await apiClient.post("/upsertGovHdmf", payload);
       const result = data?.data?.[0];
       if (data?.status !== "success" || !result || Number(result.errorCount) !== 0) {
-        throw new Error(result?.errorMsg || data?.message || "Unable to save the SSS schedule.");
+        throw new Error(result?.errorMsg || data?.message || "Unable to save the HDMF schedule.");
       }
       return data;
     },
@@ -202,17 +199,17 @@ const SssSchedule = () => {
 
   const handleSave = useCallback(async () => {
     if (!isDirty || !canEdit || savingRef.current) return;
-    const validation = validateSssRows(rows);
+    const validation = validateHdmfRows(rows);
     if (validation) return showError("Unable to save", validation);
     if (!userCode) return showError("Unable to save", "Sign in before saving the schedule.");
 
     savingRef.current = true;
     try {
-      await saveSchedule(getSssPayload(rows, userCode));
+      await saveSchedule(getHdmfPayload(rows, userCode));
       queryClient.setQueryData(queryKey, rows);
       setDraftRows(null);
       await queryClient.invalidateQueries({ queryKey });
-      showSuccess("Success!", "The complete SSS schedule has been saved.");
+      showSuccess("Success!", "The complete HDMF schedule has been saved.");
     } catch (error) {
       showError("Unable to save", error?.response?.data?.message || error.message);
     } finally {
@@ -236,7 +233,7 @@ const SssSchedule = () => {
     setDraftRows((current) => {
       const next = [...(current ?? savedRows)];
       const position = afterId === null ? next.length : next.findIndex((row) => row.__idx === afterId) + 1;
-      next.splice(position, 0, createSssRow(next));
+      next.splice(position, 0, createHdmfRow(next));
       return next;
     });
   }, [canEdit, savedRows]);
@@ -250,7 +247,7 @@ const SssSchedule = () => {
 
   const resetRows = async () => {
     if (isBusy || savingRef.current || !isDirty) return;
-    const result = await confirmAction("Discard changes?", "Restore the last loaded SSS schedule?");
+    const result = await confirmAction("Discard changes?", "Restore the last loaded HDMF schedule?");
     if (result.isConfirmed && !savingRef.current) setDraftRows(null);
   };
 
@@ -279,10 +276,10 @@ const SssSchedule = () => {
       await handleDownloadSingleUploadTemplate({
         columns: templateColumns,
         rows,
-        fileName: "SSS Contribution Template.xlsx",
-        sheetName: "SSS",
-        decimalColumnFormats: Object.fromEntries(sssFields.map(({ key }) => [key, 2])),
-        rightAlignedColumns: sssFields.map(({ key }) => key),
+        fileName: "HDMF Contribution Template.xlsx",
+        sheetName: "HDMF",
+        decimalColumnFormats: Object.fromEntries(hdmfFields.map(({ key }) => [key, 2])),
+        rightAlignedColumns: hdmfFields.map(({ key }) => key),
       });
     } catch (error) {
       showError("Download failed", error.message);
@@ -301,7 +298,8 @@ const SssSchedule = () => {
       const result = await handleSingleUploadExcelFile({
         file,
         columns: templateColumns,
-        parseRow: ({ rowNumber, rawValuesByKey }) => {
+        parseRow: ({ excelRow, rowNumber, rawValuesByKey }) => {
+          if (excelRow.worksheet.name !== "HDMF") throw new Error("Upload the HDMF template downloaded from this page.");
           const row = { __idx: crypto.randomUUID() };
           for (const { key } of templateColumns) {
             const { cell, value } = rawValuesByKey[key];
@@ -310,15 +308,16 @@ const SssSchedule = () => {
             }
             row[key] = String(value ?? "").trim();
           }
+          row.calcType = row.calcType.toUpperCase();
           return row;
         },
       });
       if (!result.ok) throw new Error(result.errors.join("\n"));
       if (result.rows.length > 999) throw new Error("The template must not contain more than 999 brackets.");
-      const validation = validateSssRows(result.rows);
+      const validation = validateHdmfRows(result.rows);
       if (validation) throw new Error(validation);
       setTemplatePromptOpen(true);
-      const confirmation = await confirmAction("Replace SSS schedule?", `Use the ${result.rows.length} validated rows from this template? This replaces the current draft. Click Save afterward to update the database.`);
+      const confirmation = await confirmAction("Replace HDMF schedule?", `Use the ${result.rows.length} validated rows from this template? This replaces the current draft. Click Save afterward to update the database.`);
       if (!confirmation.isConfirmed) return;
       setDraftRows(result.rows);
       tableRef.current?.clearAllState();
@@ -370,13 +369,13 @@ const SssSchedule = () => {
     event.preventDefault();
     const input = event.currentTarget;
     const table = input.closest("table") || input.closest(".global-tran-table-main-div-ui");
-    const cells = Array.from(table?.querySelectorAll("input[data-sss-column]") || [])
-      .filter((cell) => cell.dataset.sssColumn === input.dataset.sssColumn && !cell.disabled);
+    const cells = Array.from(table?.querySelectorAll("[data-hdmf-column]") || [])
+      .filter((cell) => cell.dataset.hdmfColumn === input.dataset.hdmfColumn && !cell.disabled);
     const next = cells[cells.indexOf(input) + 1];
     input.blur();
     if (next) {
       next.focus();
-      next.select();
+      next.select?.();
     }
   }, []);
 
@@ -408,28 +407,47 @@ const SssSchedule = () => {
       render: (row) => (
         <Input aria-label={`Order number ${row.orderNo}`} value={row.orderNo ?? ""}
           maxLength={3} disabled={!canEdit} className={cellClass}
-          data-sss-column="orderNo" onKeyDown={moveToNextRow}
+          data-hdmf-column="orderNo" onKeyDown={moveToNextRow}
           onChange={(event) => updateCell(row.__idx, "orderNo", event.target.value)} />
       ),
     },
-    ...sssFields.map(({ key, label }) => ({
+    {
+      key: "calcType", label: "Calculation Type", width: 145, minWidth: 130,
+      sortable: true, className: "!px-2",
+      render: (row) => {
+        const value = String(row.calcType || "A").toUpperCase() === "P" ? "P" : "A";
+        return (
+          <button type="button" disabled={!canEdit} data-hdmf-column="calcType"
+            aria-label={`Row ${row.orderNo}: Calculation Type ${value === "A" ? "Amount" : "Percentage"}`}
+            title="Click to toggle Amount or Percentage"
+            onClick={() => updateCell(row.__idx, "calcType", value === "A" ? "P" : "A")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") moveToNextRow(event);
+            }}
+            className={`flex min-h-[28px] w-full items-center justify-center rounded-full px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ring-1 ring-inset transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${calcTypeStyles[value]}`}>
+            {value === "A" ? "Amount" : "Percentage"}
+          </button>
+        );
+      },
+    },
+    ...hdmfFields.map(({ key, label }) => ({
       key, label, width: ["lwLimit", "upLimit", "salCredit", "mpfSc", "total"].includes(key) ? 125 : 105,
       minWidth: 95, sortable: true,
       renderType: "number", decimals: 2,
       render: (row) => (
         <Input aria-label={`Row ${row.orderNo}: ${label}`} inputMode="decimal"
-          value={activeCell === `${row.__idx}:${key}` ? (row[key] ?? "") : formatSssAmount(row[key])}
-          disabled={!canEdit} className={`${cellClass} text-right`} data-sss-column={key}
+          value={activeCell === `${row.__idx}:${key}` ? (row[key] ?? "") : formatHdmfAmount(row[key])}
+          disabled={!canEdit} className={`${cellClass} text-right`} data-hdmf-column={key}
           onFocus={() => setActiveCell(`${row.__idx}:${key}`)}
           onBlur={() => {
             setActiveCell(null);
-            const normalized = normalizeSssAmount(row[key]);
+            const normalized = normalizeHdmfAmount(row[key]);
             if (String(row[key] ?? "") !== normalized) updateCell(row.__idx, key, normalized);
           }}
           onKeyDown={moveToNextRow}
           onChange={(event) => {
             const value = event.target.value;
-            if (isSssAmountInput(value)) updateCell(row.__idx, key, value);
+            if (isHdmfAmountInput(value)) updateCell(row.__idx, key, value);
           }} />
       ),
     })),
@@ -472,7 +490,7 @@ const SssSchedule = () => {
                   </button>
                 </div>
               )}
-              <input ref={uploadRef} type="file" accept=".xlsx" className="hidden" aria-label="Upload SSS template" onChange={uploadTemplate} />
+              <input ref={uploadRef} type="file" accept=".xlsx" className="hidden" aria-label="Upload HDMF template" onChange={uploadTemplate} />
             </div>
             <div ref={guideRef} className="relative">
               <button type="button" className={toolbarClass} onClick={() => setOpenGuide((open) => !open)} aria-expanded={isOpenGuide}>
@@ -505,9 +523,9 @@ const SssSchedule = () => {
   );
 };
 
-const RefGovtSSS = () => {
+const RefGovtHDMF = () => {
   const { user } = useAuth();
-  return <SssSchedule key={`${getTenant()}:${user?.USER_CODE ?? ""}`} />;
+  return <HdmfSchedule key={`${getTenant()}:${user?.USER_CODE ?? ""}`} />;
 };
 
-export default RefGovtSSS;
+export default RefGovtHDMF;

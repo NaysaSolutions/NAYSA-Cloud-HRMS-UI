@@ -17,7 +17,10 @@ export const reftables = {
 
     // Reference Files
     Branch: "Branch Codes",
+    BankInfo: "Bank Information",
     GovtSSS: "SSS Contribution Reference",
+    GovtHDMF: "Pag-IBIG Contribution Table",
+    GovtPH: "PhilHealth Contribution Table",
     GovtTAX: "Withholding Tax Table",
     BankType: "Bank Type Codes",
     UserAccRight: "User Access Rights",
