@@ -1,13 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEye,
   faUndo,
   faCheck,
-  faPrint,
   faChevronDown,
-  faFileCsv,
-  faFileExcel,
   faFilePdf,
   faInfoCircle,
   faVideo,
@@ -15,6 +19,7 @@ import {
   faSquare,
   faCheckSquare,
   faShieldAlt,
+  faArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
@@ -33,419 +38,1285 @@ import {
   useSwalErrorAlert,
 } from "@/NAYSA Cloud/Global/behavior.jsx";
 
-function normalizeRows(data) {
-  const raw = data?.data ?? data ?? [];
+/* ============================================================
+   HELPERS
+   ============================================================ */
 
-  if (Array.isArray(raw) && raw[0]?.result) {
-    try {
-      const parsed =
-        typeof raw[0].result === "string"
-          ? JSON.parse(raw[0].result)
-          : raw[0].result;
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
+const getUserCode = (row = {}) =>
+  row.userCode ??
+  row.USER_CODE ??
+  row.user_code ??
+  "";
+
+const getUserName = (row = {}) =>
+  row.userName ??
+  row.USER_NAME ??
+  row.user_name ??
+  "";
+
+const getMasterCode = (row = {}) =>
+  row.masterCode ??
+  row.MASTER_CODE ??
+  row.master_code ??
+  row.menuCode ??
+  row.MENU_CODE ??
+  row.menu_code ??
+  "";
+
+const normalizeRows = (payload) => {
+  const raw = payload?.data ?? payload ?? [];
+
+  if (Array.isArray(raw)) {
+    return raw;
   }
 
-  return Array.isArray(raw) ? raw : [];
-}
+  return [];
+};
+
+const normalizeUserLoadRows = (payload) => {
+  try {
+    const raw =
+      payload?.data?.[0]?.result ??
+      payload?.[0]?.result ??
+      payload?.result ??
+      payload?.data;
+
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+
+    if (typeof raw === "string") {
+      const parsed = JSON.parse(raw || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error("normalizeUserLoadRows error:", error);
+    return [];
+  }
+};
+
+
+/* ============================================================
+   COMPONENT
+   ============================================================ */
 
 export default function MasterAccessRights() {
-  const docType       = "MasterAccRight";
-  const documentTitle = reftables?.[docType]         ?? "Master Data Access Rights";
-  const pdfLink       = reftablesPDFGuide?.[docType];
-  const videoLink     = reftablesVideoGuide?.[docType];
+  const docType = "MasterAccRight";
 
-  const exportRef = useRef(null);
-  const guideRef  = useRef(null);
+  const documentTitle =
+    reftables?.[docType] ??
+    "Master Data Access Rights";
 
-  // always holds the latest masterData list — avoids stale closure
+  const pdfLink =
+    reftablesPDFGuide?.[docType];
+
+  const videoLink =
+    reftablesVideoGuide?.[docType];
+
+  const guideRef = useRef(null);
   const masterDataRef = useRef([]);
 
-  const [isOpenExport, setOpenExport] = useState(false);
-  const [isOpenGuide,  setOpenGuide]  = useState(false);
+  const [isOpenGuide, setOpenGuide] =
+    useState(false);
 
-  const [loading,           setLoading]          = useState(false);
-  const [saving,            setSaving]            = useState(false);
-  const [loadingMasterData, setLoadingMasterData] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [users,      setUsers]      = useState([]);
-  const [masterData, setMasterData] = useState([]);
+  const [
+    loadingMasterData,
+    setLoadingMasterData,
+  ] = useState(false);
 
-  // mirrors RoleAccessTab:
-  //   selectedUsers     ↔ selectedRoles   (array of codes)
-  //   checkedMasterData ↔ checkedMenus    (Set of codes)
-  //   showMasterData    ↔ showMenus       (boolean gate)
-  const [selectedUsers,     setSelectedUsers]     = useState([]);
-  const [checkedMasterData, setCheckedMasterData] = useState(new Set());
-  const [showMasterData,    setShowMasterData]    = useState(false);
+  const [saving, setSaving] =
+    useState(false);
 
-  const loadMasterDataEndpoint    = "/master-access-rights/load-master-data";
-  const getUserMasterDataEndpoint = "/master-access-rights/get-user-master-data";
-  const upsertEndpoint            = "/master-access-rights/upsert-user-master-data";
-  const deleteEndpoint            = "/master-access-rights/delete-user-master-data";
+  const [users, setUsers] =
+    useState([]);
 
-  // close dropdowns on outside click
+  const [masterData, setMasterData] =
+    useState([]);
+
+  const [
+    selectedUsers,
+    setSelectedUsers,
+  ] = useState([]);
+
+  const [
+    checkedMasterData,
+    setCheckedMasterData,
+  ] = useState(new Set());
+
+  const [
+    showMasterData,
+    setShowMasterData,
+  ] = useState(false);
+
+  const [mobileStep, setMobileStep] =
+    useState("users");
+
+
+  /* ============================================================
+     ENDPOINTS
+     ============================================================ */
+
+  const loadMasterDataEndpoint =
+    "/master-access-rights/load-master-data";
+
+  const getUserMasterDataEndpoint =
+    "/master-access-rights/get-user-master-data";
+
+  const upsertEndpoint =
+    "/master-access-rights/upsert-user-master-data";
+
+
+  /* ============================================================
+     CLOSE INFO DROPDOWN
+     ============================================================ */
+
   useEffect(() => {
-    const handler = (e) => {
-      if (exportRef.current && !exportRef.current.contains(e.target)) setOpenExport(false);
-      if (guideRef.current  && !guideRef.current.contains(e.target))  setOpenGuide(false);
+    const handleClickOutside = (event) => {
+      if (
+        guideRef.current &&
+        !guideRef.current.contains(event.target)
+      ) {
+        setOpenGuide(false);
+      }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+
+    return () =>
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
   }, []);
 
+
+  /* ============================================================
+     DERIVED VALUES
+     ============================================================ */
+
+  const allUserCodes = useMemo(
+    () =>
+      (Array.isArray(users) ? users : [])
+        .map(getUserCode)
+        .filter(Boolean),
+    [users]
+  );
+
   const allMasterCodes = useMemo(
-    () => (Array.isArray(masterData) ? masterData : []).map((m) => m.masterCode).filter(Boolean),
+    () =>
+      (Array.isArray(masterData)
+        ? masterData
+        : []
+      )
+        .map(getMasterCode)
+        .filter(Boolean),
     [masterData]
   );
 
-  const allSelected =
-    allMasterCodes.length > 0 && checkedMasterData.size === allMasterCodes.length;
+  const allUsersSelected =
+    allUserCodes.length > 0 &&
+    selectedUsers.length ===
+      allUserCodes.length;
 
-  const selectedUserDetails = useMemo(
-    () => (Array.isArray(users) ? users : []).filter((u) => selectedUsers.includes(u.userCode)),
-    [users, selectedUsers]
-  );
+  const allMasterSelected =
+    allMasterCodes.length > 0 &&
+    checkedMasterData.size ===
+      allMasterCodes.length;
 
-  // ── fetch users ──────────────────────────────────────────────────────────────
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const { data } = await apiClient.get("/load", { params: { Status: "Active" } });
-      let userData = [];
-      if (Array.isArray(data?.data) && data.data[0]?.result) {
-        const parsed =
-          typeof data.data[0].result === "string"
-            ? JSON.parse(data.data[0].result)
-            : data.data[0].result;
-        if (Array.isArray(parsed)) userData = parsed;
+  const selectedUserDetails =
+    useMemo(
+      () =>
+        (Array.isArray(users)
+          ? users
+          : []
+        ).filter((row) =>
+          selectedUsers.includes(
+            getUserCode(row)
+          )
+        ),
+      [users, selectedUsers]
+    );
+
+
+  /* ============================================================
+     LOAD USERS
+     ============================================================ */
+
+  const fetchUsers =
+    useCallback(async () => {
+      setLoading(true);
+
+      try {
+        const { data } =
+          await apiClient.get(
+            "/load",
+            {
+              params: {
+                Status: "Active",
+              },
+              timeout: 60000,
+            }
+          );
+
+        const rows =
+          normalizeUserLoadRows(data);
+
+        setUsers(
+          rows.filter((row) =>
+            getUserCode(row)
+          )
+        );
+      } catch (error) {
+        console.error(
+          "fetchUsers failed:",
+          error
+        );
+
+        setUsers([]);
+
+        await useSwalErrorAlert(
+          "Error!",
+          "Failed to fetch users."
+        );
+      } finally {
+        setLoading(false);
       }
-      setUsers(userData);
-    } catch (e) {
-      console.error("fetchUsers failed", e);
-      setUsers([]);
-      await useSwalErrorAlert("Error!", "Failed to fetch users.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, []);
 
-  // ── fetch master data list ───────────────────────────────────────────────────
-  const fetchMasterData = async () => {
-    try {
-      const { data } = await apiClient.get(loadMasterDataEndpoint);
-      const rows = normalizeRows(data).map((r) => ({
-        masterCode: r.masterCode ?? r.MASTER_CODE ?? r.master_code ?? "",
-        moduleName: r.moduleName ?? r.MODULE_NAME ?? r.module        ?? "",
-        subMenu:    r.subMenu    ?? r.SUB_MENU    ?? r.sub_menu      ?? "",
-        particular: r.particular ?? r.menuName    ?? r.MENU_NAME     ?? r.menu_name ?? "",
-      }));
-      const filtered = rows.filter((r) => r.masterCode);
-      masterDataRef.current = filtered;
-      setMasterData(filtered);
-      return filtered;
-    } catch (e) {
-      console.error("fetchMasterData failed", e);
-      setMasterData([]);
-      await useSwalErrorAlert("Error!", "Failed to fetch master data list.");
-      return [];
-    }
-  };
 
-  // ── fetch which masterCodes are checked for given users ──────────────────────
-  // mirrors loadRoleMenus: returns a Set of codes directly
-  const fetchUserMasterData = async (userCodes = []) => {
-    if (!userCodes?.length) return new Set();
-    try {
-      // sproc OPENJSON uses WITH (userCode NVARCHAR(100)) → must send [{userCode}] objects
-      const { data } = await apiClient.post(getUserMasterDataEndpoint, {
-        json_data: { users: userCodes.map((uc) => ({ userCode: uc })) },
-      });
-      const rows = normalizeRows(data);
-      return new Set(
-        rows
-          .map((r) => r.masterCode ?? r.MASTER_CODE ?? r.master_code ?? r.mastercode ?? null)
-          .filter(Boolean)
-      );
-    } catch (e) {
-      console.error("fetchUserMasterData failed", e);
-      return new Set();
-    }
-  };
+  /* ============================================================
+     LOAD MASTER DATA
+     ============================================================ */
+
+  const fetchMasterData =
+    useCallback(async () => {
+      try {
+        const { data } =
+          await apiClient.get(
+            loadMasterDataEndpoint,
+            {
+              timeout: 60000,
+            }
+          );
+
+        const rows =
+          normalizeRows(data).map(
+            (row) => ({
+              masterCode:
+                getMasterCode(row),
+
+              moduleName:
+                row.moduleName ??
+                row.MODULE_NAME ??
+                row.module ??
+                row.MODULE ??
+                "",
+
+              subMenu:
+                row.subMenu ??
+                row.SUB_MENU ??
+                row.sub_menu ??
+                "",
+
+              particular:
+                row.particular ??
+                row.PARTICULAR ??
+                row.menuName ??
+                row.MENU_NAME ??
+                row.menu_name ??
+                "",
+            })
+          );
+
+        const filtered =
+          rows.filter(
+            (row) => row.masterCode
+          );
+
+        masterDataRef.current =
+          filtered;
+
+        setMasterData(filtered);
+
+        return filtered;
+      } catch (error) {
+        console.error(
+          "fetchMasterData failed:",
+          error
+        );
+
+        masterDataRef.current = [];
+        setMasterData([]);
+
+        await useSwalErrorAlert(
+          "Error!",
+          "Failed to fetch master data list."
+        );
+
+        return [];
+      }
+    }, []);
+
+
+  /* ============================================================
+     INITIAL LOAD
+     ============================================================ */
 
   useEffect(() => {
     fetchUsers();
     fetchMasterData();
-  }, []);
+  }, [fetchUsers, fetchMasterData]);
 
-  // ── toggles (mirrors RoleAccessTab) ─────────────────────────────────────────
-  const toggleUser = useCallback((userCode) => {
-    if (showMasterData) return; // lock users while master data panel is open
-    setSelectedUsers((prev) =>
-      prev.includes(userCode)
-        ? prev.filter((x) => x !== userCode)
-        : [...prev, userCode]
-    );
-  }, [showMasterData]);
 
-  const toggleMasterData = useCallback((masterCode) => {
-    setCheckedMasterData((prev) => {
-      const next = new Set(prev);
-      if (next.has(masterCode)) next.delete(masterCode);
-      else next.add(masterCode);
-      return next;
-    });
-  }, []);
+  /* ============================================================
+     USER SELECTION
+     ============================================================ */
 
-  const toggleSelectAll = useCallback(() => {
-    setCheckedMasterData((prev) =>
-      allMasterCodes.length > 0 && prev.size === allMasterCodes.length
-        ? new Set()
-        : new Set(allMasterCodes)
-    );
-  }, [allMasterCodes]);
+  const toggleUser =
+    useCallback(
+      (userCode) => {
+        if (showMasterData) {
+          return;
+        }
 
-  // ── View Rights (mirrors handleViewMenus + loadRoleMenus) ───────────────────
-  const handleViewRights = useCallback(async () => {
-    if (selectedUsers.length === 0) {
-      await useSwalWarningAlert("No Users Selected", "Please select at least one user before viewing master data.");
-      return;
-    }
-
-    setLoadingMasterData(true);
-    setShowMasterData(false);
-    setCheckedMasterData(new Set());
-
-    try {
-      if (masterDataRef.current.length === 0) {
-        await fetchMasterData();
-      }
-      const checkedSet = await fetchUserMasterData(selectedUsers);
-      setCheckedMasterData(checkedSet);
-      setShowMasterData(true);
-    } catch (e) {
-      console.error("handleViewRights failed", e);
-      await useSwalErrorAlert("Error!", "Failed to load master data access.");
-    } finally {
-      setLoadingMasterData(false);
-    }
-  }, [selectedUsers]);
-
-  // ── Reset ────────────────────────────────────────────────────────────────────
-  const handleReset = useCallback(() => {
-    setSelectedUsers([]);
-    setCheckedMasterData(new Set());
-    setShowMasterData(false);
-  }, []);
-
-  // ── Apply ────────────────────────────────────────────────────────────────────
-  const handleApply = useCallback(async () => {
-    if (selectedUsers.length === 0) {
-      await useSwalWarningAlert("No Users Selected", "Please select at least one user before applying.");
-      return;
-    }
-    if (!showMasterData) {
-      await useSwalWarningAlert("Nothing to Apply", "Click View Rights first, then modify and apply.");
-      return;
-    }
-
-    const checkedCodes   = Array.from(checkedMasterData);
-    const uncheckedCodes = masterDataRef.current
-      .map((m) => m.masterCode)
-      .filter((mc) => !checkedMasterData.has(mc));
-
-    setSaving(true);
-    try {
-      if (checkedCodes.length > 0) {
-        const { data: res } = await apiClient.post(upsertEndpoint, {
-          json_data: {
-            dt1: checkedCodes.map((masterCode) => ({ masterCode })),
-            dt2: selectedUsers.map((userCode)  => ({ userCode })),
-          },
-        });
-        const ok =
-          res?.success === true ||
-          res?.data?.status === "success" ||
-          res?.message?.toLowerCase?.().includes("saved");
-        if (!ok) throw new Error(res?.message || "Upsert failed.");
-      }
-
-      if (uncheckedCodes.length > 0) {
-        await apiClient.post(deleteEndpoint, {
-          json_data: {
-            dt1: uncheckedCodes.map((masterCode) => ({ masterCode })),
-            dt2: selectedUsers.map((userCode)    => ({ userCode })),
-          },
-        });
-      }
-
-      await useSwalSuccessAlert("Success!", "User Master Data Access updated successfully!");
-
-      // refresh from server — same as loadRoleMenus after save
-      const refreshed = await fetchUserMasterData(selectedUsers);
-      setCheckedMasterData(refreshed);
-    } catch (e) {
-      console.error("handleApply failed", e);
-      await useSwalErrorAlert("Error!", e?.response?.data?.message || "Error saving master data access.");
-    } finally {
-      setSaving(false);
-    }
-  }, [selectedUsers, showMasterData, checkedMasterData]);
-
-  const handleExport    = async (type) => {
-    await useSwalWarningAlert("Export", `Export (${type}) not yet wired for Master Access Rights.`);
-  };
-  const handlePDFGuide   = () => pdfLink   && window.open(pdfLink,   "_blank");
-  const handleVideoGuide = () => videoLink && window.open(videoLink, "_blank");
-
-  // ── columns (mirrors RoleAccessTab column definitions exactly) ───────────────
-  const userColumns = useMemo(
-    () => [
-      {
-        key:        "__select",
-        label:      "Select",
-        sortable:   false,
-        filterable: false,
-        width:      80,
-        render: (row) => (
-          <div className="flex justify-end md:justify-center py-1">
-            <input
-              type="checkbox"
-              className="h-6 w-6 md:h-4 md:w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              checked={selectedUsers.includes(row.userCode)}
-              disabled={showMasterData}
-              onClick={(e) => e.stopPropagation()}
-              onChange={() => toggleUser(row.userCode)}
-            />
-          </div>
-        ),
+        setSelectedUsers(
+          (previous) =>
+            previous.includes(userCode)
+              ? previous.filter(
+                  (code) =>
+                    code !== userCode
+                )
+              : [
+                  ...previous,
+                  userCode,
+                ]
+        );
       },
-      { key: "userCode", label: "User Code", sortable: true, width: 140 },
-      { key: "userName", label: "Username",  sortable: true, width: 260 },
-    ],
-    [selectedUsers, showMasterData, toggleUser]
-  );
+      [showMasterData]
+    );
 
-  const masterDataColumns = useMemo(
-    () => [
-      {
-        key:        "__select",
-        label:      "Full Access",
-        sortable:   false,
-        filterable: false,
-        width:      100,
-        render: (row) => (
-          <div className="flex justify-end md:justify-center py-1">
-            <input
-              type="checkbox"
-              className="h-6 w-6 md:h-4 md:w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              checked={checkedMasterData.has(row.masterCode)}
-              onClick={(e) => e.stopPropagation()}
-              onChange={() => toggleMasterData(row.masterCode)}
-            />
-          </div>
-        ),
+
+  const toggleSelectAllUsers =
+    useCallback(() => {
+      if (showMasterData) {
+        return;
+      }
+
+      setSelectedUsers(
+        (previous) =>
+          previous.length ===
+          allUserCodes.length
+            ? []
+            : [...allUserCodes]
+      );
+    }, [
+      showMasterData,
+      allUserCodes,
+    ]);
+
+
+  /* ============================================================
+     MASTER SELECTION
+     ============================================================ */
+
+  const toggleMasterData =
+    useCallback((masterCode) => {
+      setCheckedMasterData(
+        (previous) => {
+          const next =
+            new Set(previous);
+
+          if (
+            next.has(masterCode)
+          ) {
+            next.delete(
+              masterCode
+            );
+          } else {
+            next.add(masterCode);
+          }
+
+          return next;
+        }
+      );
+    }, []);
+
+
+  const toggleSelectAllMasterData =
+    useCallback(() => {
+      setCheckedMasterData(
+        (previous) =>
+          allMasterCodes.length >
+            0 &&
+          previous.size ===
+            allMasterCodes.length
+            ? new Set()
+            : new Set(
+                allMasterCodes
+              )
+      );
+    }, [allMasterCodes]);
+
+
+  /* ============================================================
+     LOAD USER MASTER ACCESS
+
+     Important:
+     A masterCode is initially checked only if ALL selected users
+     already have that access.
+     ============================================================ */
+
+  const fetchUserMasterData =
+    useCallback(
+      async (
+        userCodes = []
+      ) => {
+        if (
+          !Array.isArray(
+            userCodes
+          ) ||
+          userCodes.length === 0
+        ) {
+          return new Set();
+        }
+
+        try {
+          const { data } =
+            await apiClient.post(
+              getUserMasterDataEndpoint,
+              {
+                json_data: {
+                  users:
+                    userCodes.map(
+                      (userCode) => ({
+                        userCode,
+                      })
+                    ),
+                },
+              }
+            );
+
+          const rows =
+            normalizeRows(data);
+
+          const accessByUser =
+            new Map();
+
+          userCodes.forEach(
+            (userCode) => {
+              accessByUser.set(
+                String(userCode)
+                  .trim()
+                  .toUpperCase(),
+                new Set()
+              );
+            }
+          );
+
+          rows.forEach(
+            (row) => {
+              const userCode =
+                String(
+                  row.userCode ??
+                    row.USER_CODE ??
+                    row.user_code ??
+                    ""
+                )
+                  .trim()
+                  .toUpperCase();
+
+              const masterCode =
+                String(
+                  getMasterCode(row)
+                )
+                  .trim()
+                  .toUpperCase();
+
+              if (
+                accessByUser.has(
+                  userCode
+                ) &&
+                masterCode
+              ) {
+                accessByUser
+                  .get(userCode)
+                  .add(
+                    masterCode
+                  );
+              }
+            }
+          );
+
+          const commonCodes =
+            masterDataRef.current
+              .map(getMasterCode)
+              .filter(Boolean)
+              .filter(
+                (masterCode) => {
+                  const normalizedMaster =
+                    String(masterCode)
+                      .trim()
+                      .toUpperCase();
+
+                  return userCodes.every(
+                    (userCode) => {
+                      const normalizedUser =
+                        String(
+                          userCode
+                        )
+                          .trim()
+                          .toUpperCase();
+
+                      return accessByUser
+                        .get(
+                          normalizedUser
+                        )
+                        ?.has(
+                          normalizedMaster
+                        );
+                    }
+                  );
+                }
+              );
+
+          return new Set(
+            commonCodes
+          );
+        } catch (error) {
+          console.error(
+            "fetchUserMasterData failed:",
+            error
+          );
+
+          throw error;
+        }
       },
-      { key: "moduleName", label: "Module",    sortable: true, width: 200 },
-      { key: "subMenu",    label: "Sub Menu",  sortable: true, width: 200 },
-      { key: "particular", label: "Menu Name", sortable: true, width: 360 },
-    ],
-    [checkedMasterData, toggleMasterData]
-  );
+      []
+    );
 
-  const userTableData = useMemo(
-    () => (Array.isArray(users) ? users : []).map((row, index) => ({ ...row, __idx: index })),
-    [users]
-  );
 
-  const masterDataTableData = useMemo(
-    () => (Array.isArray(masterData) ? masterData : []).map((row, index) => ({ ...row, __idx: index })),
-    [masterData]
-  );
+  /* ============================================================
+     VIEW RIGHTS
+     ============================================================ */
 
-  // ── render ───────────────────────────────────────────────────────────────────
+  const handleViewRights =
+    useCallback(async () => {
+      if (
+        selectedUsers.length ===
+        0
+      ) {
+        await useSwalWarningAlert(
+          "No Users Selected",
+          "Please select at least one user before viewing master data access."
+        );
+
+        return;
+      }
+
+      setLoadingMasterData(
+        true
+      );
+
+      setShowMasterData(
+        false
+      );
+
+      setCheckedMasterData(
+        new Set()
+      );
+
+      try {
+        if (
+          masterDataRef.current
+            .length === 0
+        ) {
+          await fetchMasterData();
+        }
+
+        const checkedSet =
+          await fetchUserMasterData(
+            selectedUsers
+          );
+
+        setCheckedMasterData(
+          checkedSet
+        );
+
+        setShowMasterData(
+          true
+        );
+
+        setMobileStep(
+          "master"
+        );
+      } catch (error) {
+        console.error(
+          "handleViewRights failed:",
+          error
+        );
+
+        await useSwalErrorAlert(
+          "Error!",
+          error?.response?.data
+            ?.message ||
+            "Failed to load master data access."
+        );
+      } finally {
+        setLoadingMasterData(
+          false
+        );
+      }
+    }, [
+      selectedUsers,
+      fetchMasterData,
+      fetchUserMasterData,
+    ]);
+
+
+  /* ============================================================
+     APPLY
+
+     UpsertUserMasterData already replaces all master rows for
+     every selected user, so only one request is required.
+
+     Empty dt1 = clear all master access for selected users.
+     ============================================================ */
+
+  const handleApply =
+    useCallback(async () => {
+      if (
+        selectedUsers.length ===
+        0
+      ) {
+        await useSwalWarningAlert(
+          "No Users Selected",
+          "Please select at least one user before applying."
+        );
+
+        return;
+      }
+
+      if (!showMasterData) {
+        await useSwalWarningAlert(
+          "Nothing to Apply",
+          'Click "View Rights" first, then modify the access.'
+        );
+
+        return;
+      }
+
+      setSaving(true);
+
+      try {
+        const payload = {
+          json_data: {
+            dt1: Array.from(
+              checkedMasterData
+            ).map(
+              (masterCode) => ({
+                masterCode,
+              })
+            ),
+
+            dt2:
+              selectedUsers.map(
+                (userCode) => ({
+                  userCode,
+                })
+              ),
+          },
+        };
+
+        const { data } =
+          await apiClient.post(
+            upsertEndpoint,
+            payload
+          );
+
+        const success =
+          data?.success === true ||
+          data?.data?.status ===
+            "success";
+
+        if (!success) {
+          throw new Error(
+            data?.message ||
+              "Unable to save master access rights."
+          );
+        }
+
+        await useSwalSuccessAlert(
+          "Success!",
+          `Master Data Access updated for ${selectedUsers.length} user(s).`
+        );
+
+        const refreshed =
+          await fetchUserMasterData(
+            selectedUsers
+          );
+
+        setCheckedMasterData(
+          refreshed
+        );
+      } catch (error) {
+        console.error(
+          "handleApply failed:",
+          error
+        );
+
+        await useSwalErrorAlert(
+          "Error!",
+          error?.response?.data
+            ?.message ||
+            error?.message ||
+            "Error saving master data access."
+        );
+      } finally {
+        setSaving(false);
+      }
+    }, [
+      selectedUsers,
+      showMasterData,
+      checkedMasterData,
+      fetchUserMasterData,
+    ]);
+
+
+  /* ============================================================
+     RESET
+     ============================================================ */
+
+  const handleReset =
+    useCallback(() => {
+      setSelectedUsers([]);
+      setCheckedMasterData(
+        new Set()
+      );
+
+      setShowMasterData(
+        false
+      );
+
+      setMobileStep(
+        "users"
+      );
+    }, []);
+
+
+  /* ============================================================
+     USER TABLE COLUMNS
+     ============================================================ */
+
+  const userColumns =
+    useMemo(
+      () => [
+        {
+          key: "__select",
+          label: "Select",
+          sortable: false,
+          filterable: false,
+          width: 90,
+
+          render: (row) => {
+            const userCode =
+              getUserCode(row);
+
+            return (
+              <div className="flex justify-end md:justify-center py-1">
+                <input
+                  type="checkbox"
+                  className="h-6 w-6 md:h-4 md:w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  checked={selectedUsers.includes(
+                    userCode
+                  )}
+                  disabled={
+                    showMasterData
+                  }
+                  onClick={(e) =>
+                    e.stopPropagation()
+                  }
+                  onChange={() =>
+                    toggleUser(
+                      userCode
+                    )
+                  }
+                />
+              </div>
+            );
+          },
+        },
+
+        {
+          key: "userCode",
+          label: "User Code",
+          sortable: true,
+          width: 150,
+          render: (row) =>
+            getUserCode(row),
+        },
+
+        {
+          key: "userName",
+          label: "Username",
+          sortable: true,
+          width: 260,
+          render: (row) =>
+            getUserName(row),
+        },
+      ],
+      [
+        selectedUsers,
+        showMasterData,
+        toggleUser,
+      ]
+    );
+
+
+  /* ============================================================
+     MASTER TABLE COLUMNS
+     ============================================================ */
+
+  const masterDataColumns =
+    useMemo(
+      () => [
+        {
+          key: "__select",
+          label: "Full Access",
+          sortable: false,
+          filterable: false,
+          width: 110,
+
+          render: (row) => {
+            const masterCode =
+              getMasterCode(row);
+
+            return (
+              <div className="flex justify-end md:justify-center py-1">
+                <input
+                  type="checkbox"
+                  className="h-6 w-6 md:h-4 md:w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  checked={checkedMasterData.has(
+                    masterCode
+                  )}
+                  onClick={(e) =>
+                    e.stopPropagation()
+                  }
+                  onChange={() =>
+                    toggleMasterData(
+                      masterCode
+                    )
+                  }
+                />
+              </div>
+            );
+          },
+        },
+
+        {
+          key: "moduleName",
+          label: "Module",
+          sortable: true,
+          width: 180,
+        },
+
+        {
+          key: "subMenu",
+          label: "Sub Menu",
+          sortable: true,
+          width: 180,
+        },
+
+        {
+          key: "particular",
+          label: "Menu Name",
+          sortable: true,
+          width: 340,
+        },
+      ],
+      [
+        checkedMasterData,
+        toggleMasterData,
+      ]
+    );
+
+
+  /* ============================================================
+     TABLE DATA
+     ============================================================ */
+
+  const userTableData =
+    useMemo(
+      () =>
+        (Array.isArray(users)
+          ? users
+          : []
+        ).map(
+          (row, index) => ({
+            ...row,
+            userCode:
+              getUserCode(row),
+            userName:
+              getUserName(row),
+            __idx: index,
+          })
+        ),
+      [users]
+    );
+
+
+  const masterDataTableData =
+    useMemo(
+      () =>
+        (Array.isArray(masterData)
+          ? masterData
+          : []
+        ).map(
+          (row, index) => ({
+            ...row,
+            __idx: index,
+          })
+        ),
+      [masterData]
+    );
+
+
+  /* ============================================================
+     INFO
+     ============================================================ */
+
+  const handlePDFGuide =
+    () => {
+      if (pdfLink) {
+        window.open(
+          pdfLink,
+          "_blank"
+        );
+      }
+
+      setOpenGuide(false);
+    };
+
+
+  const handleVideoGuide =
+    () => {
+      if (videoLink) {
+        window.open(
+          videoLink,
+          "_blank"
+        );
+      }
+
+      setOpenGuide(false);
+    };
+
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+
   return (
-    <div className="global-ref-main-div-ui mt-24">
-      {(loading || saving || loadingMasterData) && <LoadingSpinner />}
+    <div className="global-ref-main-div-ui">
+      {(loading ||
+        saving ||
+        loadingMasterData) && (
+        <LoadingSpinner />
+      )}
 
-      {/* Header */}
-      <div className="fixed mt-4 top-14 left-6 right-6 z-30 global-ref-header-ui flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <h1 className="global-ref-headertext-ui">{documentTitle}</h1>
-        </div>
+      {/* ======================================================
+          HEADER
+          ====================================================== */}
+      <div className="global-ref-header-ui !py-2">
+        <div className="w-full flex flex-col gap-1 md:grid md:grid-cols-3 md:items-center md:gap-0">
 
-        <div className="flex gap-2 justify-center text-xs flex-wrap">
-          <button onClick={handleViewRights} className="bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
-            <FontAwesomeIcon icon={faEye} /> View Rights
-          </button>
-          <button onClick={handleReset} className="bg-gray-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-700">
-            <FontAwesomeIcon icon={faUndo} /> Reset
-          </button>
-          <button onClick={handleApply} className="bg-green-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700">
-            <FontAwesomeIcon icon={faCheck} /> Apply
-          </button>
+          {/* TITLE */}
+          <div className="w-full md:w-auto flex md:justify-start">
+            <h1 className="global-ref-headertext-ui w-full md:w-auto truncate text-center md:text-left text-[18px] leading-tight">
+              {documentTitle}
+            </h1>
+          </div>
 
-          {/* <div ref={exportRef} className="relative">
-            <button onClick={() => setOpenExport((v) => !v)} className="bg-green-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700">
-              <FontAwesomeIcon icon={faPrint} /> Export <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
-            </button>
-            {isOpenExport && (
-              <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-lg bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800">
-                <button onClick={() => { handleExport("csv");   setOpenExport(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900">
-                  <FontAwesomeIcon icon={faFileCsv}   className="mr-2 text-green-600" /> CSV
+          {/* CENTER SPACER */}
+          <div className="hidden md:flex justify-center w-full" />
+
+          {/* BUTTONS */}
+          <div className="w-full md:w-auto flex md:justify-end">
+            <div className="w-full md:w-auto flex items-center justify-center md:justify-end gap-2 flex-wrap">
+
+              <button
+                type="button"
+                onClick={
+                  handleViewRights
+                }
+                disabled={
+                  selectedUsers.length ===
+                    0 ||
+                  showMasterData
+                }
+                className="flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FontAwesomeIcon
+                  icon={faEye}
+                />
+
+                <span className="hidden sm:inline ml-1">
+                  View Rights
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleApply
+                }
+                disabled={
+                  !showMasterData ||
+                  saving
+                }
+                className="flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FontAwesomeIcon
+                  icon={faCheck}
+                />
+
+                <span className="hidden sm:inline ml-1">
+                  Apply
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleReset
+                }
+                className="flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150"
+              >
+                <FontAwesomeIcon
+                  icon={faUndo}
+                />
+
+                <span className="hidden sm:inline ml-1">
+                  Reset
+                </span>
+              </button>
+
+              <div
+                ref={guideRef}
+                className="relative"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenGuide(
+                      (value) =>
+                        !value
+                    )
+                  }
+                  className="bg-blue-600 text-white h-7 w-8 sm:w-auto sm:h-8 sm:px-4 rounded-md flex items-center justify-center gap-1 shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150"
+                >
+                  <FontAwesomeIcon
+                    icon={
+                      faInfoCircle
+                    }
+                    className="text-[12px]"
+                  />
+
+                  <span className="hidden sm:inline ml-1 text-[11px] font-medium">
+                    Info
+                  </span>
+
+                  <FontAwesomeIcon
+                    icon={
+                      faChevronDown
+                    }
+                    className={`hidden sm:inline text-[10px] opacity-80 transition-transform duration-200 ${
+                      isOpenGuide
+                        ? "rotate-180"
+                        : ""
+                    }`}
+                  />
                 </button>
-                <button onClick={() => { handleExport("excel"); setOpenExport(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900">
-                  <FontAwesomeIcon icon={faFileExcel} className="mr-2 text-green-600" /> Excel
-                </button>
-                <button onClick={() => { handleExport("pdf");   setOpenExport(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900">
-                  <FontAwesomeIcon icon={faFilePdf}   className="mr-2 text-red-600"   /> PDF
-                </button>
+
+                {isOpenGuide && (
+                  <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white ring-1 ring-black/10 z-[60] overflow-hidden">
+
+                    <button
+                      type="button"
+                      onClick={
+                        handlePDFGuide
+                      }
+                      disabled={
+                        !pdfLink
+                      }
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 border-b border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          faFilePdf
+                        }
+                        className="mr-2 text-red-500"
+                      />
+                      PDF Guide
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        handleVideoGuide
+                      }
+                      disabled={
+                        !videoLink
+                      }
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          faVideo
+                        }
+                        className="mr-2 text-blue-500"
+                      />
+                      Video Guide
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div> */}
-
-          <div ref={guideRef} className="relative">
-            <button onClick={() => setOpenGuide((v) => !v)} className="bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
-              <FontAwesomeIcon icon={faInfoCircle} /> Help <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
-            </button>
-            {isOpenGuide && (
-              <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800">
-                <button onClick={() => { handlePDFGuide();   setOpenGuide(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900">
-                  <FontAwesomeIcon icon={faFilePdf} className="mr-2 text-red-600"  /> User Guide
-                </button>
-                <button onClick={() => { handleVideoGuide(); setOpenGuide(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900">
-                  <FontAwesomeIcon icon={faVideo}   className="mr-2 text-blue-600" /> Video Guide
-                </button>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div style={{ height: "15px" }} aria-hidden="true" />
 
-      {/* Body */}
-      <div className="global-ref-body-ui">
-        <div className="flex flex-col md:flex-row md:items-stretch gap-4">
+      {/* ======================================================
+          BODY
+          ====================================================== */}
+      <div className="mt-10">
+        <div className="flex flex-col md:flex-row gap-4">
 
-          {/* USERS PANEL */}
-          <div className="w-full md:w-1/2">
+          {/* ==================================================
+              USERS PANEL
+              ================================================== */}
+          <div
+            className={`w-full md:w-1/2 ${
+              mobileStep ===
+              "users"
+                ? "block"
+                : "hidden md:block"
+            }`}
+          >
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-full flex flex-col">
-              <h2 className="text-lg font-semibold mb-2 text-gray-700">Users</h2>
+
+              <div className="flex items-center justify-between mb-2 gap-3">
+                <h2 className="text-lg font-semibold text-gray-700">
+                  Users
+                </h2>
+
+                <div className="flex items-center gap-2">
+
+                  <button
+                    type="button"
+                    onClick={
+                      toggleSelectAllUsers
+                    }
+                    disabled={
+                      showMasterData ||
+                      allUserCodes.length ===
+                        0
+                    }
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        allUsersSelected
+                          ? faSquare
+                          : faCheckSquare
+                      }
+                    />
+
+                    {allUsersSelected
+                      ? "Unselect All"
+                      : "Select All"}
+                  </button>
+
+                  {showMasterData && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMobileStep(
+                          "master"
+                        )
+                      }
+                      className="md:hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-sm font-medium"
+                    >
+                      Master Data
+
+                      <FontAwesomeIcon
+                        icon={
+                          faArrowLeft
+                        }
+                        className="rotate-180"
+                      />
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="flex-1 min-h-0">
                 <SearchGlobalReferenceTable
-                  docType="MasterAccRight"
-                  columns={userColumns}
-                  data={userTableData}
-                  isLoading={loading}
-                  itemsPerPage={10}
-                  showFilters={true}
-                  onRowClick={(row) => toggleUser(row.userCode)}
-                  onRowDoubleClick={(row) => toggleUser(row.userCode)}
-                  mobileSelectable={true}
-                  selectedRowChecker={(row) => selectedUsers.includes(row.userCode)}
+                  docType={
+                    docType
+                  }
+                  columns={
+                    userColumns
+                  }
+                  data={
+                    userTableData
+                  }
+                  isLoading={
+                    loading
+                  }
+                  itemsPerPage={
+                    50
+                  }
+                  showFilters={
+                    true
+                  }
+                  onRowClick={(
+                    row
+                  ) =>
+                    toggleUser(
+                      getUserCode(
+                        row
+                      )
+                    )
+                  }
+                  onRowDoubleClick={(
+                    row
+                  ) =>
+                    toggleUser(
+                      getUserCode(
+                        row
+                      )
+                    )
+                  }
+                  mobileSelectable={
+                    true
+                  }
+                  selectedRowChecker={(
+                    row
+                  ) =>
+                    selectedUsers.includes(
+                      getUserCode(
+                        row
+                      )
+                    )
+                  }
                   tableSize="Half"
                   className="h-full"
                 />
@@ -453,53 +1324,147 @@ export default function MasterAccessRights() {
             </div>
           </div>
 
-          {/* MASTER DATA PANEL */}
-          <div className="w-full md:w-1/2">
+
+          {/* ==================================================
+              MASTER DATA PANEL
+              ================================================== */}
+          <div
+            className={`w-full md:w-1/2 ${
+              mobileStep ===
+              "master"
+                ? "block"
+                : "hidden md:block"
+            }`}
+          >
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 h-full flex flex-col">
 
               <div className="flex items-center justify-between mb-2 gap-3">
-                <h2 className="text-lg font-semibold text-gray-700">Master Data</h2>
-                {showMasterData && (
-                  <button
-                    type="button"
-                    onClick={toggleSelectAll}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors"
-                  >
-                    <FontAwesomeIcon icon={allSelected ? faSquare : faCheckSquare} />
-                    {allSelected ? "Unselect All" : "Select All"}
-                  </button>
-                )}
+                <h2 className="text-lg font-semibold text-gray-700">
+                  Master Data
+                </h2>
+
+                <div className="flex items-center gap-2">
+
+                  {showMasterData && (
+                    <button
+                      type="button"
+                      onClick={
+                        toggleSelectAllMasterData
+                      }
+                      disabled={
+                        allMasterCodes.length ===
+                        0
+                      }
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          allMasterSelected
+                            ? faSquare
+                            : faCheckSquare
+                        }
+                      />
+
+                      {allMasterSelected
+                        ? "Unselect All"
+                        : "Select All"}
+                    </button>
+                  )}
+
+                  {showMasterData && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMobileStep(
+                          "users"
+                        )
+                      }
+                      className="md:hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 text-sm font-medium"
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          faArrowLeft
+                        }
+                      />
+                      Back
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {showMasterData ? (
-                <>
-                  {/* selected users badge — mirrors RoleAccessTab "Selected Role" badge */}
-                  <div className="mb-2">
-                    <div className="inline-flex max-w-full items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
-                      <FontAwesomeIcon icon={faShieldAlt} className="text-blue-600 text-sm shrink-0" />
-                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700 shrink-0">
-                          Selected User{selectedUserDetails.length !== 1 ? "s" : ""}
-                        </span>
-                        {selectedUserDetails.length === 0 ? (
-                          <span className="text-xs text-gray-500">None</span>
-                        ) : selectedUserDetails.length === 1 ? (
-                          <span className="inline-flex items-center rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-800 max-w-[260px] truncate">
-                            {selectedUserDetails[0].userCode} – {selectedUserDetails[0].userName}
+
+              {showMasterData && (
+                <div className="mb-3">
+                  <div className="inline-flex max-w-full items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1.5">
+
+                    <FontAwesomeIcon
+                      icon={
+                        faShieldAlt
+                      }
+                      className="text-blue-600"
+                    />
+
+                    <div className="min-w-0">
+
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+                        Selected User
+                        {selectedUserDetails.length !==
+                        1
+                          ? "s"
+                          : ""}
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+
+                        {selectedUserDetails.length ===
+                        1 ? (
+                          <span className="inline-flex items-center rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-800">
+                            {getUserCode(
+                              selectedUserDetails[0]
+                            )}{" "}
+                            -{" "}
+                            {getUserName(
+                              selectedUserDetails[0]
+                            )}
                           </span>
                         ) : (
                           <>
                             <span className="inline-flex items-center rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-800">
-                              {selectedUserDetails.length} users
+                              {
+                                selectedUserDetails.length
+                              }{" "}
+                              users selected
                             </span>
-                            {selectedUserDetails.slice(0, 1).map((u) => (
-                              <span key={u.userCode} className="inline-flex items-center rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] text-blue-700">
-                                {u.userCode}
-                              </span>
-                            ))}
-                            {selectedUserDetails.length > 1 && (
+
+                            {selectedUserDetails
+                              .slice(
+                                0,
+                                2
+                              )
+                              .map(
+                                (
+                                  user
+                                ) => (
+                                  <span
+                                    key={getUserCode(
+                                      user
+                                    )}
+                                    className="inline-flex items-center rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] text-blue-700"
+                                  >
+                                    {getUserCode(
+                                      user
+                                    )}
+                                  </span>
+                                )
+                              )}
+
+                            {selectedUserDetails.length >
+                              2 && (
                               <span className="inline-flex items-center rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] text-blue-700">
-                                +{selectedUserDetails.length - 1} more
+                                +
+                                {selectedUserDetails.length -
+                                  2}{" "}
+                                more
                               </span>
                             )}
                           </>
@@ -507,48 +1472,127 @@ export default function MasterAccessRights() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex-1 min-h-0">
-                    <SearchGlobalReferenceTable
-                      docType="MasterAccRight"
-                      columns={masterDataColumns}
-                      data={masterDataTableData}
-                      isLoading={loadingMasterData}
-                      itemsPerPage={50}
-                      showFilters={true}
-                      onRowClick={(row) => toggleMasterData(row.masterCode)}
-                      onRowDoubleClick={(row) => toggleMasterData(row.masterCode)}
-                      mobileSelectable={true}
-                      selectedRowChecker={(row) => checkedMasterData.has(row.masterCode)}
-                      tableSize="Half"
-                      className="h-full"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="h-full min-h-[320px] flex items-center justify-center text-center text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
-                  <div>
-                    <FontAwesomeIcon icon={faDatabase} className="text-xl mb-2 text-gray-400" />
-                    <h3 className="font-medium text-sm mb-1">Master Data Selection Hidden</h3>
-                    <p className="text-xs px-4">
-                      Select user(s) and click "View Rights" to see and assign master data access.
-                    </p>
-                  </div>
                 </div>
               )}
+
+
+              <div className="flex-1 min-h-0">
+
+                {showMasterData ? (
+                  <SearchGlobalReferenceTable
+                    docType={
+                      docType
+                    }
+                    columns={
+                      masterDataColumns
+                    }
+                    data={
+                      masterDataTableData
+                    }
+                    isLoading={
+                      loadingMasterData
+                    }
+                    itemsPerPage={
+                      50
+                    }
+                    showFilters={
+                      true
+                    }
+                    onRowClick={(
+                      row
+                    ) =>
+                      toggleMasterData(
+                        getMasterCode(
+                          row
+                        )
+                      )
+                    }
+                    onRowDoubleClick={(
+                      row
+                    ) =>
+                      toggleMasterData(
+                        getMasterCode(
+                          row
+                        )
+                      )
+                    }
+                    mobileSelectable={
+                      true
+                    }
+                    selectedRowChecker={(
+                      row
+                    ) =>
+                      checkedMasterData.has(
+                        getMasterCode(
+                          row
+                        )
+                      )
+                    }
+                    tableSize="Half"
+                    className="h-full"
+                  />
+                ) : (
+                  <div className="h-full min-h-[320px] flex items-center justify-center text-center text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
+                    <div>
+                      <FontAwesomeIcon
+                        icon={
+                          faDatabase
+                        }
+                        className="text-xl mb-2 text-gray-400"
+                      />
+
+                      <h3 className="font-medium text-sm mb-1">
+                        Master Data Selection Hidden
+                      </h3>
+
+                      <p className="text-xs px-4">
+                        Select user(s)
+                        from the users
+                        table and click
+                        "View Rights".
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={
+                          handleViewRights
+                        }
+                        disabled={
+                          selectedUsers.length ===
+                          0
+                        }
+                        className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <FontAwesomeIcon
+                          icon={
+                            faEye
+                          }
+                        />
+                        View Rights
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {selectedUsers.length > 0 && (
+
+        {/* ====================================================
+            STATUS
+            ==================================================== */}
+
+        {selectedUsers.length >
+          0 && (
           <div className="mt-3 bg-blue-50 p-2 rounded text-xs">
             {showMasterData
-              ? `Assigning master data access to ${selectedUsers.length} selected user(s). Select items and click Apply.`
+              ? `Assigning Master Data Access to ${selectedUsers.length} selected user(s). Select items and click Apply.`
               : `${selectedUsers.length} user(s) selected. Click "View Rights" to continue.`}
           </div>
         )}
 
-        {showMasterData && checkedMasterData.size > 0 && (
+        {showMasterData && (
           <div className="mt-2 bg-green-50 p-2 rounded text-xs">
             {`${checkedMasterData.size} master data item(s) selected for Full Access.`}
           </div>

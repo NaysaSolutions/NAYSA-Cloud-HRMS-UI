@@ -144,7 +144,7 @@ export function LoadingSpinner() {
 
         {/* Animated brand letters */}
         <div className="relative flex flex-col items-center justify-center leading-tight" aria-label="Loading">
-          {["N A Y S A", "Financials", "Cloud"].map((line, lineIndex) => (
+          {["N A Y S A", "HRMS", "Cloud"].map((line, lineIndex) => (
             <div key={line} className="flex items-center justify-center gap-x-1">
               {line.split("").map((letter, index) => (
                 <span
