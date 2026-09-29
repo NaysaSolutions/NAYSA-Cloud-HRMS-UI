@@ -12,7 +12,9 @@ import {
 export const reftables = {
 
     // Reference Files
+    POS: "Position Codes",
     Branch: "Branch Codes",
+    PayGroup: "Payroll Group",
     BankInfo: "Bank Information",
     GovtSSS: "SSS Contribution Reference",
     GovtHDMF: "Pag-IBIG Contribution Table",
