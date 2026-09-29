@@ -1,11 +1,5 @@
-// src/NAYSA Cloud/Reference File/RefBranch.jsx
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+// src/NAYSA Cloud/Reference File/RefShift.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
@@ -22,7 +16,6 @@ import {
   faChevronDown,
   faFilePdf,
   faVideo,
-  faBuilding,
   faCircleCheck,
   faCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -45,7 +38,6 @@ import {
   useSwalErrorAlertAPI,
   useSwalDeleteConfirm,
   useSwalDeleteRecord,
-  useSwalValidationAlert,
 } from "@/NAYSA Cloud/Global/behavior.jsx";
 
 import {
@@ -53,34 +45,24 @@ import {
   useGetFieldLength,
 } from "@/NAYSA Cloud/Global/procedure";
 
-const DOC_TYPE = "Branch";
+const DOC_TYPE = "Shift";
 
-const BRANCH_TYPE_OPTIONS = [
-  { value: "Main", label: "Main" },
-  { value: "Branch", label: "Branch" },
+const SHIFT_TYPE_OPTIONS = [
+  { value: "DS", label: "Day Shift" },
+  { value: "MS", label: "Mid Shift" },
+  { value: "NS", label: "Night Shift" },
 ];
 
-// Visual language for the Branch Type badge shown in the table.
-const BRANCH_TYPE_STYLES = {
-  Main: "bg-indigo-100 text-indigo-800 ring-1 ring-inset ring-indigo-200",
-  Branch: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
-};
-
-const normalizeBranchType = (value) => {
-  const v = String(value || "").trim().toUpperCase();
-
-  if (v === "MAIN") return "Main";
-  return "Branch";
-};
-
 const INITIAL_FORM = {
-  branchCode: "",
-  branchName: "",
-  branchAddress: "",
-  branchTin: "",
-  branchType: "Branch", // Main / Branch / Company Store / Franchisee
-  active: "Y", // Y/N
-  tblFieldArray: [],
+  code: "",
+  description: "",
+  shiftStart: "",
+  shiftEnd: "",
+  breakStart: "",
+  breakEnd: "",
+  breakMins: "",
+  ShiftType: "DS",
+  active: "Y",
 };
 
 const INITIAL_REG = {
@@ -90,7 +72,51 @@ const INITIAL_REG = {
   lastUpdatedDate: "",
 };
 
-const RefBranch = () => {
+// =====================================================================
+// CUSTOM TIME PICKER
+// =====================================================================
+const TimeField = ({ label, value, onChange, disabled, required }) => (
+  <div className="relative w-full">
+    <input
+      type="time"
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full min-h-[38px] px-3 py-1.5 text-[13px] text-gray-700 bg-transparent border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 transition-colors dark:border-gray-600 dark:text-gray-200"
+    />
+    <label className="absolute -top-2 left-2 px-1 bg-white dark:bg-gray-800 text-[11px] font-medium text-gray-600 dark:text-gray-400">
+      {required && <span className="text-red-500 mr-1">*</span>}
+      {label}
+    </label>
+  </div>
+);
+
+// =====================================================================
+// CUSTOM MINUTES PICKER (Para naka-align sa Time Picker)
+// =====================================================================
+const MinutesField = ({ label, value, onChange, disabled }) => (
+  <div className="relative w-full">
+    <input
+      type="number"
+      min="0"
+      step="1"
+      placeholder="0"
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full min-h-[38px] px-3 py-1.5 text-[13px] text-gray-700 bg-transparent border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 transition-colors dark:border-gray-600 dark:text-gray-200"
+    />
+    <label className="absolute -top-2 left-2 px-1 bg-white dark:bg-gray-800 text-[11px] font-medium text-gray-600 dark:text-gray-400">
+      {label}
+    </label>
+    <div className="absolute right-8 top-2.5 text-[11px] font-medium text-gray-400 pointer-events-none">
+      mins
+    </div>
+  </div>
+);
+// =====================================================================
+
+const RefShift = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -102,59 +128,77 @@ const RefBranch = () => {
   const [registrationInfo, setRegistrationInfo] = useState(INITIAL_REG);
 
   const [isEditing, setIsEditing] = useState(true);
-  const [isFieldsExpanded, setIsFieldsExpanded] = useState(false);
-  const [selectedBranchCode, setSelectedBranchCode] = useState(null);
+  const [isFieldsExpanded, setIsFieldsExpanded] = useState(true);
+  const [selectedCode, setSelectedCode] = useState(null);
 
   const [isOpenGuide, setOpenGuide] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
   const [tblFieldArray, setTblFieldArray] = useState([]);
 
-  const userCode = user?.USER_CODE;
-
-  const isAdding = isEditing && !selectedBranchCode;
+  const isAdding = isEditing && !selectedCode;
 
   const updateForm = (updates) => setFormData((p) => ({ ...p, ...updates }));
-
-  const getAddress = useCallback((row) => {
-    return [row?.branchAddress, row?.branchAddr2, row?.branchAddr3]
-      .filter(Boolean)
-      .join(", ");
-  }, []);
-
-  const getBranchTypeLabel = (branchType) => normalizeBranchType(branchType);
 
   const getActiveLabel = (activeYN) =>
     String(activeYN || "").toUpperCase() === "Y" ? "Yes" : "No";
 
+  // --- AM/PM FORMATTER (Para sa Data Table) ---
+  const formatTimeAMPM = (timeString) => {
+    if (!timeString) return "";
+    const [hourString, minutePart] = timeString.split(":");
+    if (!hourString || !minutePart) return timeString;
+
+    let hour = parseInt(hourString, 10);
+    const cleanMinute = minutePart.substring(0, 2);
+
+    const isAlreadyPM = timeString.toUpperCase().includes("PM");
+    const isAlreadyAM = timeString.toUpperCase().includes("AM");
+
+    let ampm = hour >= 12 ? "PM" : "AM";
+    if (isAlreadyPM) ampm = "PM";
+    if (isAlreadyAM) ampm = "AM";
+
+    hour = hour % 12 || 12;
+
+    const formattedHour = hour.toString().padStart(2, "0");
+    return `${formattedHour}:${cleanMinute} ${ampm}`;
+  };
+
   // --- TANSTACK QUERY: LIST ---
-  const { data: branches = [], isLoading: isListLoading } = useQuery({
-    queryKey: ["branchList"],
+  const { data: shifts = [], isLoading: isListLoading } = useQuery({
+    queryKey: ["shiftList"],
     queryFn: async () => {
-      const { data } = await apiClient.get("/branch");
+      const { data } = await apiClient.get("/shift");
       const raw = data?.data?.[0]?.result || data?.[0]?.result || data?.result;
-      return raw ? JSON.parse(raw) : [];
+      const rows = raw ? JSON.parse(raw) : [];
+      return rows.map((row) => ({
+        ...row,
+        description: row.description ?? row.name ?? "",
+        shiftStart: row.shiftStart ?? row.shift_start ?? "",
+        shiftEnd: row.shiftEnd ?? row.shift_end ?? "",
+        breakStart: row.breakStart ?? row.break_start ?? "",
+        breakEnd: row.breakEnd ?? row.break_end ?? "",
+        breakMins: row.breakMins ?? row.break_mins ?? "",
+        ShiftType: row.ShiftType ?? row.shift_type ?? "DS",
+      }));
     },
   });
 
   // --- MUTATION: UPSERT ---
-  const { mutate: saveBranch, isLoading: isSaving } = useMutation({
+  const { mutate: saveShift, isLoading: isSaving } = useMutation({
     mutationFn: async (payload) =>
-      await apiClient.post("/upsertBranch", payload),
+      await apiClient.post("/upsertShift", payload),
 
     onSuccess: (response) => {
-      // 1) SPROC row style (errorcount/errormsg)
       const sqlRow = response?.data?.data?.[0];
       if (sqlRow?.errorcount > 0) {
         useSwalErrorAlert(
           "Unable to save",
-          sqlRow?.errormsg || "Failed to save Branch.",
+          sqlRow?.errormsg || "Failed to save Shift.",
         );
-        // resetForm(); // ✅ reset on failure
         return;
       }
 
-      // 2) API status style
       const status = response?.data?.status ?? response?.data?.data?.status;
       const success =
         response?.data?.success || status === "success" || !status;
@@ -164,15 +208,13 @@ const RefBranch = () => {
           "Error",
           response?.data?.message ||
             response?.data?.data?.message ||
-            "Failed to save Branch.",
+            "Failed to save Shift.",
         );
-        // resetForm(); // ✅ reset on failure
         return;
       }
 
-      // ✅ success path
-      queryClient.invalidateQueries({ queryKey: ["branchList"] });
-      useSwalSuccessAlert("Success!", "Branch saved successfully!");
+      queryClient.invalidateQueries({ queryKey: ["shiftList"] });
+      useSwalSuccessAlert("Success!", "Shift saved successfully!");
       resetForm();
     },
 
@@ -183,19 +225,18 @@ const RefBranch = () => {
           ? `HTTP ${error.response.status}`
           : error?.message || String(error),
       );
-      // resetForm(); // ✅ reset on request error too
     },
   });
 
   // --- MUTATION: DELETE ---
-  const { mutate: deleteBranch, isLoading: isDeleting } = useMutation({
+  const { mutate: deleteShift, isLoading: isDeleting } = useMutation({
     mutationFn: async (payload) =>
-      await apiClient.post("/deleteBranch", payload),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries(["branchList"]);
+      await apiClient.post("/deleteShift", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["shiftList"]);
       useSwalDeleteRecord(
         "Deleted!",
-        "The branch has been removed from the system.",
+        "The shift has been removed from the system.",
       );
       resetForm();
     },
@@ -206,9 +247,9 @@ const RefBranch = () => {
   const resetForm = () => {
     setFormData(INITIAL_FORM);
     setRegistrationInfo(INITIAL_REG);
-    setSelectedBranchCode(null);
+    setSelectedCode(null);
     setIsEditing(false);
-    setIsFieldsExpanded(false);
+    setIsFieldsExpanded(true);
   };
 
   const startAdd = () => {
@@ -220,54 +261,57 @@ const RefBranch = () => {
   const handleEdit = (row) => {
     if (!row) return;
 
-    setSelectedBranchCode(row.branchCode ?? null);
+    setSelectedCode(row.code ?? null);
     setFormData({
       ...INITIAL_FORM,
-      branchCode: row.branchCode ?? "",
-      branchName: row.branchName ?? "",
-      branchAddress: row.branchAddress ?? "",
-      branchTin: row.branchTin ?? "",
-      branchType: normalizeBranchType(row.branchType),
+      code: row.code ?? "",
+      description: row.description ?? "",
+      shiftStart: row.shiftStart ?? "",
+      shiftEnd: row.shiftEnd ?? "",
+      breakStart: row.breakStart ?? "",
+      breakEnd: row.breakEnd ?? "",
+      breakMins: row.breakMins ?? "",
+      ShiftType: row.ShiftType ?? "DS",
       active: String(row.active ?? "Y").toUpperCase() === "Y" ? "Y" : "N",
     });
 
-    setRegistrationInfo({
-      registeredBy: row.registeredBy,
-      registeredDate: row.registeredDate,
-      lastUpdatedBy: row.lastUpdatedBy,
-      lastUpdatedDate: row.lastUpdatedDate,
+   setRegistrationInfo({
+      registeredBy: row.registeredBy || "",
+      registeredDate: row.registeredDate || "",
+      lastUpdatedBy: row.lastUpdatedBy || "",      
+      lastUpdatedDate: row.lastUpdatedDate || "", 
     });
 
-    console.log("Edit Row:", row);
     setIsEditing(true);
     setIsFieldsExpanded(true);
   };
 
-  // --- ACTIONS ---
-  const handleSave = () => {
+const handleSave = () => {
     const payload = {
-      json_data: JSON.stringify({
-        json_data: {
-          ...formData,
-          action: selectedBranchCode ? "EDIT" : "ADD",
-          userCode: user?.USER_CODE || "ADMIN",
-        },
-      }),
+      json_data: {
+        code: formData.code,
+        description: formData.description,
+        shiftStart: formData.shiftStart || "",
+        shiftEnd: formData.shiftEnd || "",
+        breakStart: formData.breakStart || "",
+        breakEnd: formData.breakEnd || "",
+        breakMins: formData.breakMins || "0",
+        ShiftType: formData.ShiftType || "DS",
+        active: formData.active || "Y",
+        action: selectedCode ? "EDIT" : "ADD",
+        userCode: user?.USER_CODE || "ADMIN",
+      }
     };
-    saveBranch(payload);
+    
+    saveShift(payload);
   };
 
   const handleDelete = async (row) => {
     try {
-      setIsLoading(true); // Ensure you have a general loading state or use the mutation's state
-      const payload = {
-        json_data: {
-          branchCode: row.branchCode,
-        },
-      };
+      setIsLoading(true);
+      const payload = { json_data: { code: row.code } };
 
-      // 1. Check if used in other tables via SPROC
-      const response = await apiClient.post("/checkInUsedBranch", payload);
+      const response = await apiClient.post("/checkInUsedShift", payload);
       const sqlRow = response?.data?.data?.[0];
       const rawJsonString = sqlRow?.result || Object.values(sqlRow || {})[0];
       const parsedData = JSON.parse(rawJsonString || '{"result":"0"}');
@@ -275,19 +319,18 @@ const RefBranch = () => {
       if (parsedData.result === "1") {
         setIsLoading(false);
         return useSwalErrorAlertAPI(
-          `Cannot Delete Branch Code: ${row.branchCode}`,
+          `Cannot Delete Shift Code: ${row.code}`,
           `Code was already used.`,
         );
       }
 
-      // 2. Confirmations
       const confirm = await useSwalDeleteConfirm(
         "Confirm Delete",
-        `Are you sure you want to delete Code: ${row.branchCode}?`,
+        `Are you sure you want to delete Code: ${row.code}?`,
       );
 
       if (confirm.isConfirmed) {
-        deleteBranch(payload);
+        deleteShift(payload);
       }
     } catch (error) {
       useSwalErrorAlertAPI("System Error", error);
@@ -296,24 +339,22 @@ const RefBranch = () => {
     }
   };
 
-  // --- DUPLICATE CHECK (Add mode only) ---
-  const handleCheckDuplicate = async (code) => {
-    if (isEditing && selectedBranchCode) return;
-    if (!code) return;
+  const handleCheckDuplicate = async (codeValue) => {
+    if (isEditing && selectedCode) return;
+    if (!codeValue) return;
 
     try {
-      const payload = { json_data: { branchCode: code } };
-      const response = await apiClient.post("/checkDuplicateBranch", payload);
+      const payload = { json_data: { code: codeValue } };
+      const response = await apiClient.post("/checkDuplicateShift", payload);
 
       const sqlRow = response?.data?.data?.[0];
       const rawJsonString = sqlRow?.result || Object.values(sqlRow || {})[0];
       const parsedData = JSON.parse(rawJsonString || '{"result":"0"}');
 
       if (parsedData.result === "1") {
-        setIsLoading(false);
         resetForm();
         return useSwalErrorAlertAPI(
-          `Duplicate Branch Code: ${code}`,
+          `Duplicate Shift Code: ${codeValue}`,
           `Code was already used.`,
         );
       }
@@ -322,7 +363,6 @@ const RefBranch = () => {
     }
   };
 
-  // Ctrl+S save + click outside dropdown
   useEffect(() => {
     const handleKey = (e) => {
       if (e.ctrlKey && e.key === "s") {
@@ -340,9 +380,9 @@ const RefBranch = () => {
       window.removeEventListener("keydown", handleKey);
       document.removeEventListener("mousedown", handleClick);
     };
-  }, [isEditing, formData, branches]);
+  }, [isEditing, formData, shifts]);
 
-  // --- TABLE COLUMNS (SearchGlobalReferenceTable style) ---
+  // --- TABLE COLUMNS ---
   const columns = useMemo(
     () => [
       {
@@ -354,110 +394,108 @@ const RefBranch = () => {
           <div className="flex gap-2 justify-center">
             <button
               onClick={() => handleEdit(row)}
-              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 bg-blue-50 border border-blue-100 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white hover:shadow-sm active:scale-95 transition-all duration-150 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 px-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white transition-all text-xs"
               title="Edit"
             >
               <FontAwesomeIcon icon={faEdit} />
-              <span className="md:hidden">Edit</span>
             </button>
-
             <button
               onClick={() => handleDelete(row)}
-              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 md:py-2 px-3 md:px-2 bg-red-50 border border-red-100 text-red-600 rounded-md hover:bg-red-600 hover:text-white hover:shadow-sm active:scale-95 transition-all duration-150 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+              className="flex-1 h-7 md:flex-none flex items-center justify-center gap-1 py-2 px-3 bg-red-50 border border-red-100 text-red-600 rounded-md hover:bg-red-600 hover:text-white transition-all text-xs"
               title="Delete"
             >
               <FontAwesomeIcon icon={faTrashAlt} />
-              <span className="md:hidden">Delete</span>
             </button>
           </div>
         ),
       },
-
       {
-        key: "branchCode",
-        label: "Branch Code",
+        key: "code",
+        label: "Shift Code",
         sortable: true,
         width: 120,
         minWidth: 120,
-        requiredVisible: true,
         render: (row) => (
-          <span className="font-mono text-[12px] font-semibold tracking-wide text-gray-700 dark:text-gray-200">
-            {row.branchCode}
+          <span className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-200">
+            {row.code}
           </span>
         ),
       },
       {
-        key: "branchName",
-        label: "Branch Name",
+        key: "description",
+        label: "Description",
         sortable: true,
-        width: 280,
-        minWidth: 280,
-        requiredVisible: true,
+        width: 250,
+        minWidth: 220,
       },
       {
-        key: "address",
-        label: "Address",
+        key: "shiftStart",
+        label: "Start Time",
         sortable: true,
-        width: 350,
-        minWidth: 100,
-        render: (row) => (
-          <span className="text-gray-600 dark:text-gray-300">
-            {getAddress(row) || (
-              <span className="italic text-gray-400">No address on file</span>
-            )}
-          </span>
-        ),
+        width: 120,
+        minWidth: 110,
+        render: (row) => formatTimeAMPM(row.shiftStart),
       },
       {
-        key: "branchTin",
-        label: "TIN",
+        key: "shiftEnd",
+        label: "End Time",
         sortable: true,
-        width: 150,
-        minWidth: 100,
+        width: 120,
+        minWidth: 110,
+        render: (row) => formatTimeAMPM(row.shiftEnd),
       },
       {
-        key: "branchType",
-        label: "Branch Type",
+        key: "breakStart",
+        label: "Break Start",
+        sortable: true,
+        width: 120,
+        minWidth: 110,
+        render: (row) => formatTimeAMPM(row.breakStart),
+      },
+      {
+        key: "breakEnd",
+        label: "Break End",
+        sortable: true,
+        width: 120,
+        minWidth: 110,
+        render: (row) => formatTimeAMPM(row.breakEnd),
+      },
+      {
+        key: "breakMins",
+        label: "Break Mins",
         sortable: true,
         width: 100,
         minWidth: 100,
-        className: "!px-2",
-        render: (row) => {
-          const label = getBranchTypeLabel(row.branchType);
-          return (
-            <span
-              className={`flex min-h-[28px] w-full items-center justify-center rounded-full px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
-                BRANCH_TYPE_STYLES[label] ||
-                "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200"
-              }`}
-            >
-              {label}
-            </span>
-          );
-        },
+      },
+      {
+        key: "ShiftType",
+        label: "Shift Type",
+        sortable: true,
+        width: 100,
+        render: (row) => (
+          <span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full text-[11px] font-medium">
+            {row.ShiftType}
+          </span>
+        ),
       },
       {
         key: "active",
         label: "Active",
         sortable: true,
         width: 100,
-        minWidth: 100,
-        className: "!px-2",
         render: (row) => {
           const isActive = String(row.active || "").toUpperCase() === "Y";
           return (
             <span
-              className={`flex min-h-[28px] w-full items-center justify-center gap-1.5 rounded-full px-2 py-1 text-center text-[11px] font-medium whitespace-nowrap ${
+              className={`flex items-center justify-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium ${
                 isActive
-                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                  : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-gray-100 text-gray-500"
               }`}
             >
               <FontAwesomeIcon
                 icon={isActive ? faCircleCheck : faCircleXmark}
-                className={`text-[10px] ${
-                  isActive ? "text-emerald-500" : "text-gray-400"
-                }`}
+                className={`text-[10px] ${isActive ? "text-emerald-500" : "text-gray-400"}`}
               />
               {getActiveLabel(row.active)}
             </span>
@@ -465,18 +503,15 @@ const RefBranch = () => {
         },
       },
     ],
-    [getAddress, branches, selectedBranchCode, handleDelete],
+    [shifts, selectedCode, handleDelete],
   );
 
-  // load max length metadata once
   useEffect(() => {
     let mounted = true;
-
     (async () => {
-      const res = await useFieldLenghtCheck("REF_BRANCH");
+      const res = await useFieldLenghtCheck("REF_SHIFT");
       if (mounted) setTblFieldArray(res || []);
     })();
-
     return () => {
       mounted = false;
     };
@@ -486,22 +521,21 @@ const RefBranch = () => {
 
   return (
     <div className="global-ref-main-div-ui">
-      {(isListLoading || isSaving || isDeleting) && <LoadingSpinner />}
+      {(isListLoading || isSaving || isDeleting || isLoading) && (
+        <LoadingSpinner />
+      )}
 
-      {/* HEADER (same UI pattern as COAMast, no Tabs) */}
+      {/* HEADER */}
       <div className="global-ref-header-ui mb-2">
         <div className="w-full flex flex-col gap-1 md:grid md:grid-cols-3 md:items-center md:gap-0">
-          {/* Left: Title */}
           <div className="w-full md:w-auto flex md:justify-start">
             <h1 className="global-ref-headertext-ui w-full md:w-auto flex items-center justify-center md:justify-start gap-2 truncate text-center md:text-left">
-              {reftables[DOC_TYPE] || "Branch Reference"}
+              {reftables[DOC_TYPE] || "Shift Reference"}
             </h1>
           </div>
 
-          {/* Middle: spacer (no tabs) */}
           <div className="hidden md:flex justify-center w-full" />
 
-          {/* Right: Buttons + Info */}
           <div className="w-full md:w-auto flex md:justify-end">
             <div className="w-full md:w-auto flex items-center justify-center md:justify-end gap-2 flex-wrap">
               <div className="flex flex-wrap justify-center md:justify-end gap-2">
@@ -523,12 +557,11 @@ const RefBranch = () => {
                       icon: faSave,
                       onClick: handleSave,
                       disabled: !isEditing || isSaving || !isFieldsExpanded,
-                      className: `flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md transition-all duration-150
-                        ${
-                          !isEditing || isSaving || !isFieldsExpanded
-                            ? "bg-blue-500 opacity-50 cursor-not-allowed text-white"
-                            : "bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95"
-                        }`,
+                      className: `flex items-center justify-center h-7 w-8 sm:w-auto sm:h-8 sm:px-4 text-[11px] font-medium rounded-md transition-all duration-150 ${
+                        !isEditing || isSaving || !isFieldsExpanded
+                          ? "bg-blue-500 opacity-50 cursor-not-allowed text-white"
+                          : "bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow active:scale-95"
+                      }`,
                     },
                     {
                       key: "reset",
@@ -544,9 +577,9 @@ const RefBranch = () => {
                 />
               </div>
 
-              {/* Info Dropdown */}
               <div ref={guideRef} className="relative">
                 <button
+                  type="button"
                   onClick={() => setOpenGuide((v) => !v)}
                   className="bg-blue-600 text-white h-7 w-8 sm:w-auto sm:h-8 sm:px-4 rounded-md flex items-center justify-center gap-1 shadow-sm hover:bg-blue-700 hover:shadow active:scale-95 transition-all duration-150"
                 >
@@ -568,6 +601,7 @@ const RefBranch = () => {
                 {isOpenGuide && (
                   <div className="absolute right-0 mt-2 w-52 rounded-md shadow-xl bg-white ring-1 ring-black/10 z-[60] dark:bg-gray-800 overflow-hidden origin-top-right animate-[fadeIn_0.12s_ease-out]">
                     <button
+                      type="button"
                       onClick={() => {
                         if (pdfLink) window.open(pdfLink, "_blank");
                         setOpenGuide(false);
@@ -578,11 +612,12 @@ const RefBranch = () => {
                       <FontAwesomeIcon
                         icon={faFilePdf}
                         className="mr-2 text-red-500"
-                      />{" "}
+                      />
                       PDF Guide
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => {
                         if (videoLink) window.open(videoLink, "_blank");
                         setOpenGuide(false);
@@ -593,7 +628,7 @@ const RefBranch = () => {
                       <FontAwesomeIcon
                         icon={faVideo}
                         className="mr-2 text-blue-500"
-                      />{" "}
+                      />
                       Video Guide
                     </button>
                   </div>
@@ -606,30 +641,18 @@ const RefBranch = () => {
 
       {/* MAIN CONTENT */}
       <div className="mt-24 sm:mt-24 flex flex-col lg:flex-row lg:items-stretch gap-2">
-        {/* LEFT: Form */}
-        <div
-          className={`flex-1 bg-white dark:bg-gray-800 p-4 rounded-xl border shadow-lg transition-colors duration-200 border-gray-100 dark:border-gray-700"
-          }`}
-        >
-          {/* Form status strip */}
-          <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-100 dark:border-gray-700">
-            <div>
-              {/* <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                {isAdding
-                  ? "Branch Details"
-                  : selectedBranchCode
-                    ? "Edit Branch"
-                    : "Branch Details"}
-              </h2> */}
-              <p className="text-[11px] sm:text-[14px] p-1.5 text-blue-600 font-semibold mt-0.5">
-                {isEditing
-                  ? selectedBranchCode
-                    ? `Updating Record - ${selectedBranchCode}`
-                    : "Fill in the fields below to add a new branch"
-                  : "Select \u201cAdd\u201d or double-click a row to edit"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+        <div className="flex-1 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-lg transition-colors duration-200">
+          {/* Status strip */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+            <p className="text-[11px] sm:text-[14px] p-1.5 text-gray-500 dark:text-gray-400 mt-0.5">
+              {isEditing
+                ? selectedCode
+                  ? `Updating Record - ${selectedCode}`
+                  : "Fill in the fields below to add a new shift"
+                : "Select “Add” or double-click a row to edit"}
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
               {isEditing && (
                 <span
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium ring-1 ring-inset ${
@@ -646,12 +669,13 @@ const RefBranch = () => {
                   {isAdding ? "Adding" : "Editing"}
                 </span>
               )}
+
               <button
                 type="button"
                 onClick={() => setIsFieldsExpanded((expanded) => !expanded)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors"
                 aria-expanded={isFieldsExpanded}
-                aria-controls="ref-branch-fields ref-branch-registration"
+                aria-controls="ref-shift-fields ref-shift-registration"
               >
                 <FontAwesomeIcon
                   icon={faChevronDown}
@@ -664,90 +688,97 @@ const RefBranch = () => {
             </div>
           </div>
 
+          {/* 3x3 Grid Layout */}
           <div
-            id="ref-branch-fields"
-            className={`grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 transition-all duration-200 ${
-              isFieldsExpanded
-                ? "opacity-100 max-h-[600px]"
-                : "hidden"
+            id="ref-shift-fields"
+            className={`grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 transition-all duration-200 ${
+              isFieldsExpanded ? "opacity-100" : "hidden"
             }`}
           >
-            {/* Column 1 */}
-            <div className="space-y-4">
-              <FieldRenderer
-                label="Branch Code"
-                required
-                type="text"
-                value={formData.branchCode}
-                disabled={!isEditing || (isEditing && !!selectedBranchCode)}
-                onChange={(v) =>
-                  updateForm({ branchCode: (v || "").toUpperCase() })
-                }
-                onBlur={(e) => handleCheckDuplicate(e.target.value)}
-                maxLength={getMax("BRANCH_CODE")}
-              />
+            {/* ROW 1 */}
+            <FieldRenderer
+              label="Shift Code"
+              required
+              type="text"
+              value={formData.code}
+              disabled={!isEditing || !!selectedCode}
+              onChange={(v) => updateForm({ code: (v || "").toUpperCase() })}
+              onBlur={(e) => handleCheckDuplicate(e.target.value)}
+              maxLength={getMax("SHIFT_CODE")}
+            />
+            <FieldRenderer
+              label="Description"
+              required
+              type="text"
+              value={formData.description}
+              disabled={!isEditing}
+              onChange={(v) => updateForm({ description: v })}
+              maxLength={getMax("SHIFT_DESC")}
+            />
+            <FieldRenderer
+              label="Shift Type"
+              type="select"
+              value={formData.ShiftType}
+              disabled={!isEditing}
+              options={SHIFT_TYPE_OPTIONS}
+              onChange={(v) => updateForm({ ShiftType: v })}
+            />
 
-              <FieldRenderer
-                label="Branch Name"
-                required
-                type="text"
-                value={formData.branchName}
-                disabled={!isEditing}
-                onChange={(v) => updateForm({ branchName: v })}
-                maxLength={getMax("BRANCH_NAME")}
-              />
+            {/* ROW 2 */}
+            <TimeField
+              label="Shift Start"
+              required
+              type ="time"
+              value={formData.shiftStart}
+              disabled={!isEditing}
+              onChange={(v) => updateForm({ shiftStart: v })}
+            />
+            <TimeField
+              label="Shift End"
+              required
+              type ="time"
+              value={formData.shiftEnd}
+              disabled={!isEditing}
+              onChange={(v) => updateForm({ shiftEnd: v })}
+            />
+            <FieldRenderer
+              label="Active"
+              type="select"
+              value={formData.active === "Y" ? "Yes" : "No"}
+              disabled={!isEditing}
+              options={[
+                { value: "Yes", label: "Yes" },
+                { value: "No", label: "No" },
+              ]}
+              onChange={(v) => updateForm({ active: v === "No" ? "N" : "Y" })}
+            />
 
-              <FieldRenderer
-                label="Branch Address"
-                required
-                type="text"
-                value={formData.branchAddress}
-                disabled={!isEditing}
-                onChange={(v) => updateForm({ branchAddress: v })}
-                maxLength={getMax("BRANCH_ADDRESS")}
-              />
-            </div>
-
-            {/* Column 2 */}
-            <div className="space-y-4">
-              <FieldRenderer
-                label="TIN"
-                required
-                type="text"
-                value={formData.branchTin}
-                disabled={!isEditing}
-                onChange={(v) => updateForm({ branchTin: v })}
-                maxLength={getMax("BRANCH_TIN")}
-              />
-
-              <FieldRenderer
-                label="Branch Type"
-                type="select"
-                value={normalizeBranchType(formData.branchType)}
-                disabled={!isEditing}
-                options={BRANCH_TYPE_OPTIONS}
-                onChange={(v) =>
-                  updateForm({ branchType: normalizeBranchType(v) })
-                }
-              />
-
-              <FieldRenderer
-                label="Active"
-                type="select"
-                value={formData.active === "Y" ? "Yes" : "No"}
-                disabled={!isEditing}
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-                onChange={(v) => updateForm({ active: v === "No" ? "N" : "Y" })}
-              />
-            </div>
+            {/* ROW 3 - GINAGAMIT NA ANG CUSTOM <MinutesField /> */}
+            <TimeField
+              label="Break Start"
+              tye="time"
+              value={formData.breakStart}
+              disabled={!isEditing}
+              onChange={(v) => updateForm({ breakStart: v })}
+            />
+            <TimeField
+              label="Break End"
+              type="time"
+              value={formData.breakEnd}
+              disabled={!isEditing}
+              onChange={(v) => updateForm({ breakEnd: v })}
+            />
+            <MinutesField
+              label="Break Mins"
+              type="number"
+              value={formData.breakMins}
+              disabled={!isEditing}
+              onChange={(v) => updateForm({ breakMins: v })}
+            />
           </div>
 
-          {/* Registration Info */}
           <div
-            id="ref-branch-registration"
+            id="ref-shift-registration"
             className={`mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 transition-all duration-200 ${
               isFieldsExpanded ? "opacity-100" : "hidden"
             }`}
@@ -757,17 +788,16 @@ const RefBranch = () => {
         </div>
       </div>
 
-      {/* TABLE */}
       <div className="global-tran-table-main-div-ui mt-4">
         <SearchGlobalReferenceTable
           docType={DOC_TYPE}
           columns={columns}
-          data={branches}
+          data={shifts}
           isLoading={isListLoading}
           onRowDoubleClick={handleEdit}
           itemsPerPage={50}
           onRefresh={() =>
-            queryClient.invalidateQueries({ queryKey: ["branchList"] })
+            queryClient.invalidateQueries({ queryKey: ["shiftList"] })
           }
           autoFillGrid="True"
         />
@@ -776,4 +806,4 @@ const RefBranch = () => {
   );
 };
 
-export default RefBranch;
+export default RefShift;
