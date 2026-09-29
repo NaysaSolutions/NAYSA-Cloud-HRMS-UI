@@ -153,6 +153,7 @@ export const pageRegistry = {
   CurrRef: lazyPage(() => import("./NAYSA Cloud/Reference File/CurrRef.jsx")),
   DForexRef: lazyPage(() => import("./NAYSA Cloud/Reference File/DForexRef.jsx")),
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
+  RefArea: lazyPage(() => import("./NAYSA Cloud/Reference File/RefArea.jsx")),
   BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
   UpdateUser: lazyPage(() => import("./NAYSA Cloud/Security/UpdateUser.jsx")),
   UserAccessRights: lazyPage(() => import("./NAYSA Cloud/Security/UserAccessRights.jsx")),
