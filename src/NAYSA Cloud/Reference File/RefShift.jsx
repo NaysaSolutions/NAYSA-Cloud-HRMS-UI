@@ -728,6 +728,7 @@ const handleSave = () => {
             <TimeField
               label="Shift Start"
               required
+              type ="time"
               value={formData.shiftStart}
               disabled={!isEditing}
               onChange={(v) => updateForm({ shiftStart: v })}
@@ -735,6 +736,7 @@ const handleSave = () => {
             <TimeField
               label="Shift End"
               required
+              type ="time"
               value={formData.shiftEnd}
               disabled={!isEditing}
               onChange={(v) => updateForm({ shiftEnd: v })}
@@ -754,18 +756,21 @@ const handleSave = () => {
             {/* ROW 3 - GINAGAMIT NA ANG CUSTOM <MinutesField /> */}
             <TimeField
               label="Break Start"
+              tye="time"
               value={formData.breakStart}
               disabled={!isEditing}
               onChange={(v) => updateForm({ breakStart: v })}
             />
             <TimeField
               label="Break End"
+              type="time"
               value={formData.breakEnd}
               disabled={!isEditing}
               onChange={(v) => updateForm({ breakEnd: v })}
             />
             <MinutesField
               label="Break Mins"
+              type="number"
               value={formData.breakMins}
               disabled={!isEditing}
               onChange={(v) => updateForm({ breakMins: v })}
