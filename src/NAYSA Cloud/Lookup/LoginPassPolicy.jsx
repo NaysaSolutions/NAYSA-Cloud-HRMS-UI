@@ -26,15 +26,21 @@ const DEFAULT_POLICY = {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const LoginPassPolicy = ({ isOpen, onClose }) => {
+const LoginPassPolicy = ({
+  isOpen,
+  onClose,
+  apiBase = "/security",
+  doneBy = "",
+  onSaved,
+}) => {
   const queryClient = useQueryClient();
   const [policy, setPolicy] = useState(DEFAULT_POLICY);
 
   // ── Fetch existing policy ────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ["loginPassPolicy"],
+    queryKey: ["loginPassPolicy", apiBase],
     queryFn: async () => {
-      const { data } = await apiClient.get("/security/policy");
+      const { data } = await apiClient.get(`${apiBase}/policy`);
       if (data?.data) return data.data;
       if (Array.isArray(data) && data.length > 0) return data[0];
       return null;
@@ -59,13 +65,17 @@ const LoginPassPolicy = ({ isOpen, onClose }) => {
   // ── Save mutation ────────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async (payload) => {
-      return apiClient.post("/security/policy/upsert", payload);
+      return apiClient.post(`${apiBase}/policy/upsert`, {
+        ...payload,
+        doneBy,
+      });
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response, savedPolicy) => {
       const res = response.data;
       if (res?.success === true || res?.data?.status === "success") {
-        await queryClient.invalidateQueries({ queryKey: ["loginPassPolicy"] });
+        await queryClient.invalidateQueries({ queryKey: ["loginPassPolicy", apiBase] });
         await useSwalSuccessAlert("Saved!", "Login/Password policy updated successfully.");
+        onSaved?.(savedPolicy);
         onClose();
       } else {
         await useSwalErrorAlert("Error!", res?.message || "Failed to save policy.");

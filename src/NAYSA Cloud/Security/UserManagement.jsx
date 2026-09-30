@@ -5,6 +5,7 @@ import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import { useAuth } from "@/NAYSA Cloud/Authentication/AuthContext.jsx";
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
+import LoginPassPolicy from "@/NAYSA Cloud/Lookup/LoginPassPolicy";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -20,6 +21,7 @@ import {
   faInfoCircle,
   faVideo,
   faLockOpen,
+  faShieldHalved,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -110,6 +112,7 @@ const UserManagement = () => {
 
   const [showSpinner, setShowSpinner] = useState(false);
   const [isOpenGuide, setOpenGuide] = useState(false);
+  const [showLoginPolicyModal, setShowLoginPolicyModal] = useState(false);
   const [maxLog, setMaxLog] = useState(0);
 
   const guideRef = useRef(null);
@@ -141,6 +144,12 @@ const UserManagement = () => {
   // Load the current failed-login policy so a manually inactive user is not
   // mistaken for an account that was locked by failed login attempts.
   useEffect(() => {
+    // Login / Password Policy is a Security Administrator function only.
+    if (currentUserType !== "X") {
+      setMaxLog(0);
+      return;
+    }
+
     apiClient
       .get(`${API_BASE}/policy`)
       .then(({ data }) => {
@@ -151,7 +160,7 @@ const UserManagement = () => {
         console.warn("Unable to load user lock policy:", error);
         setMaxLog(0);
       });
-  }, []);
+  }, [currentUserType]);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Load users
@@ -896,6 +905,19 @@ const UserManagement = () => {
     >
       {showSpinner && <LoadingSpinner />}
 
+      {currentUserType === "X" && showLoginPolicyModal && (
+        <LoginPassPolicy
+          isOpen={showLoginPolicyModal}
+          onClose={() => setShowLoginPolicyModal(false)}
+          apiBase={API_BASE}
+          doneBy={currentUserCode}
+          onSaved={(savedPolicy) => {
+            const policyMaxLog = Number(savedPolicy?.maxLog ?? 0);
+            setMaxLog(Number.isFinite(policyMaxLog) ? policyMaxLog : 0);
+          }}
+        />
+      )}
+
       {/* Header */}
       <div className="fixed mt-4 top-14 left-6 right-6 z-30 global-ref-header-ui flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto">
@@ -972,6 +994,17 @@ const UserManagement = () => {
               </div>
             )}
           </div>
+
+          {currentUserType === "X" && (
+            <button
+              onClick={() => setShowLoginPolicyModal(true)}
+              title="Login / Password Policy"
+              className="bg-blue-600 text-white h-8 w-8 sm:w-auto sm:px-3 sm:py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+            >
+              <FontAwesomeIcon icon={faShieldHalved} />
+              <span className="hidden sm:inline">Login / Password Policy</span>
+            </button>
+          )}
 
           <button
             onClick={handleResetPassword}

@@ -30,6 +30,9 @@ export const pageRegistry = {
   RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
   RefPayGroup: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPayGroup.jsx")),
   RefPosition: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPOS.jsx")),
+  RefLeave: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLeave.jsx")),
+  RefOvertime: lazyPage(() => import("./NAYSA Cloud/Reference File/RefOvertime.jsx")),
+  RefEmployeeStatus: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeStatus.jsx")),
 
   
   RefGovtSSS: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
