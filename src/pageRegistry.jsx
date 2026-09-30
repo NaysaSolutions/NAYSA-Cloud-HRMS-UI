@@ -25,7 +25,7 @@ export const pageRegistry = {
   RefCompany: lazyPage(() => import("./NAYSA Cloud/Reference File/RefCompany.jsx")),
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
   RefArea: lazyPage(() => import("./NAYSA Cloud/Reference File/RefArea.jsx")),
-  BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
+  RefBank: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBank.jsx")),
   RefHoliday: lazyPage(() => import("./NAYSA Cloud/Reference File/RefHoliday.jsx")),
   RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
 
