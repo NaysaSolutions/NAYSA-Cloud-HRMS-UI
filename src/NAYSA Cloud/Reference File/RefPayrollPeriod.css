@@ -1,0 +1,48 @@
+#ref-cutoff-fields {
+  gap: 24px;
+  font-family: inherit;
+}
+
+#ref-cutoff-fields > div {
+  min-width: 0;
+  gap: 24px;
+}
+
+#ref-cutoff-fields > div > div {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+#ref-cutoff-fields .global-ref-textbox-ui {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 32px !important;
+  min-height: 32px;
+  border-radius: 8px;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-family: inherit;
+  font-size: 12px !important;
+  font-style: normal;
+  font-weight: 400 !important;
+  line-height: 16px !important;
+}
+
+#ref-cutoff-fields .global-ref-textbox-ui::placeholder,
+#ref-cutoff-fields input::-webkit-datetime-edit {
+  font: inherit;
+}
+
+#ref-cutoff-fields .global-ref-floating-label {
+  top: -8px !important;
+  left: 8px !important;
+  transform: none !important;
+  padding: 0 4px !important;
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 11px !important;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 16px;
+}

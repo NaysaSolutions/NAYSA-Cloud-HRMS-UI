@@ -17,7 +17,6 @@ import {
   faVideo,
   faCircleCheck,
   faCircleXmark,
-  faSearch,
 } from "@fortawesome/free-solid-svg-icons";
 
 import ButtonBar from "@/NAYSA Cloud/Global/ButtonBar.jsx";
@@ -26,7 +25,7 @@ import RegistrationInfo from "@/NAYSA Cloud/Global/RegistrationInfo.jsx";
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 
-import SearchRefLoanED from "@/NAYSA Cloud/Lookup/SearchRefLoanED.jsx";
+import SearchRefED from "@/NAYSA Cloud/Lookup/SearchRefED.jsx";
 
 import {
   reftables,
@@ -63,37 +62,6 @@ const INITIAL_REG = {
   lastUpdatedBy: "",
   lastUpdatedDate: "",
 };
-
-// =====================================================================
-// CUSTOM SEARCHABLE FIELD WRAPPER
-// =====================================================================
-const SearchableField = ({ label, value, onClick, disabled, required }) => (
-  <div className="relative w-full">
-    <div className="flex items-center w-full border border-gray-300 rounded-md bg-transparent dark:border-gray-600 focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-colors overflow-hidden">
-      <input
-        type="text"
-        value={value || ""}
-        disabled={disabled}
-        readOnly
-        className="w-full min-h-[38px] px-3 py-1.5 text-[13px] text-gray-700 bg-transparent border-none focus:outline-none disabled:bg-gray-50 disabled:text-gray-500 dark:text-gray-200 cursor-pointer"
-        onClick={!disabled ? onClick : undefined}
-      />
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onClick}
-        className="flex items-center justify-center min-h-[38px] w-[38px] bg-gray-100 hover:bg-gray-200 text-gray-600 border-l border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
-      >
-        <FontAwesomeIcon icon={faSearch} className="text-[12px]" />
-      </button>
-    </div>
-    <label className="absolute -top-2 left-2 px-1 bg-white dark:bg-gray-800 text-[11px] font-medium text-gray-600 dark:text-gray-400">
-      {required && <span className="text-red-500 mr-1">*</span>}
-      {label}
-    </label>
-  </div>
-);
-
 
 const RefLoan = ({ headerTabs, pageTitle, active = true }) => {
   const queryClient = useQueryClient();
@@ -442,7 +410,7 @@ const RefLoan = ({ headerTabs, pageTitle, active = true }) => {
         <div className="w-full flex flex-col gap-1 md:grid md:grid-cols-3 md:items-center md:gap-0">
           <div className="w-full md:w-auto flex md:justify-start">
             <h1 className="global-ref-headertext-ui w-full md:w-auto flex items-center justify-center md:justify-start gap-2 truncate text-center md:text-left">
-              {pageTitle || reftables[DOC_TYPE] || "Loan Master"}
+              {pageTitle || reftables[DOC_TYPE] || "Loan Master Data"}
             </h1>
           </div>
 
@@ -639,12 +607,13 @@ const RefLoan = ({ headerTabs, pageTitle, active = true }) => {
             />
 
             {/* ROW 2: SEARCH LOOKUPS */}
-            <SearchableField
+            <FieldRenderer
+              type="lookup"
               label="ED Code"
               required
               value={formData.edCode}
               disabled={!isEditing}
-              onClick={() => setShowEdModal(true)}
+              onLookup={() => setShowEdModal(true)}
             />
             <FieldRenderer
               label="ED Name"
@@ -682,7 +651,7 @@ const RefLoan = ({ headerTabs, pageTitle, active = true }) => {
       </div>
 
       {/* SEARCH MODALS */}
-      <SearchRefLoanED
+      <SearchRefED
         isOpen={showEdModal}
         onClose={(row) => {
           if (row) updateForm({ edCode: row.edCode, edName: row.edName });

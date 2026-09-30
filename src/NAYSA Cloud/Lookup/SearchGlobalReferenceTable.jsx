@@ -67,6 +67,7 @@ const SearchGlobalReferenceTable = forwardRef(
       showGlobalSearch = true,
       showGroupBy = true,
       enableGroupBy, // New Prop for explicit control
+      keepGroupedColumns = false,
       docType,
       onRowDoubleClick,
       onRowClick, 
@@ -344,9 +345,9 @@ const SearchGlobalReferenceTable = forwardRef(
     const visibleCols = useMemo(
       () =>
         baseVisibleColumns.filter(
-          (c) => !userHiddenCols.includes(c.key) && !groupedKeysSet.has(c.key),
+          (c) => !userHiddenCols.includes(c.key) && (keepGroupedColumns || !groupedKeysSet.has(c.key)),
         ),
-      [baseVisibleColumns, userHiddenCols, groupedKeysSet],
+      [baseVisibleColumns, userHiddenCols, groupedKeysSet, keepGroupedColumns],
     );
 
     const isActionColumn = (c) =>
@@ -421,6 +422,7 @@ const SearchGlobalReferenceTable = forwardRef(
 
     const handleColDragStart = (e, key) => {
       setDraggedCol(key);
+      e.dataTransfer.setData("text/plain", key);
       e.dataTransfer.effectAllowed = "move";
     };
 
