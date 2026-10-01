@@ -23,6 +23,7 @@ import {
 } from "@/NAYSA Cloud/Global/behavior.jsx";
 
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable.jsx";
+import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 
 const getUserCode = (row = {}) =>
   row.userCode ?? row.USER_CODE ?? row.user_code ?? "";
@@ -735,6 +736,8 @@ const BranchAccessTab = forwardRef(
             {`${selectedBranches.length} branch(es) selected to apply to ${selectedUsers.length} user(s).`}
           </div>
         )}
+
+        {loadingBranches && <LoadingSpinner />}
       </div>
     );
   }

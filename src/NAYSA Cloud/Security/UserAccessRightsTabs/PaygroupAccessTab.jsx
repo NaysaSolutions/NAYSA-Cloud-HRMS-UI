@@ -22,6 +22,7 @@ import {
 } from "@/NAYSA Cloud/Global/behavior.jsx";
 
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable.jsx";
+import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 
 
 const getUserCode = (row = {}) =>
@@ -904,6 +905,8 @@ const PaygroupAccessTab = forwardRef(
           </div>
         )}
 
+
+        {loadingPaygroups && <LoadingSpinner />}
       </div>
     );
   }
