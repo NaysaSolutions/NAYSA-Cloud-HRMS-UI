@@ -42,6 +42,10 @@ export const pageRegistry = {
 
   RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
 
+
+  //TRANSACTIONS
+  Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
+
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
   RefShift: lazyPage(() => import("./NAYSA Cloud/Reference File/RefShift.jsx")),
