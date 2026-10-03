@@ -17,6 +17,7 @@ export const reftables = {
     Branch: "Branch Codes",
     PayGroup: "Payroll Group",
     BankInfo: "Bank Information",
+    LeaveCredit: "Leave Credit Table",
     GovtSSS: "SSS Contribution Reference",
     GovtHDMF: "Pag-IBIG Contribution Table",
     GovtPH: "PhilHealth Contribution Table",

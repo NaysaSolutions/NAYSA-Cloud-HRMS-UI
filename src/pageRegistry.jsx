@@ -24,6 +24,11 @@ export const pageRegistry = {
   // Global Reference
   RefCompany: lazyPage(() => import("./NAYSA Cloud/Reference File/RefCompany.jsx")),
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
+  RefLeaveCredit: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLeaveCredit.jsx")),
+  GenerateLeaveCredits: lazyPage(() => import("./NAYSA Cloud/Leaves/GenerateLeaveCredits.jsx")),
+  EmployeeLeaveLedger: lazyPage(() => import("./NAYSA Cloud/Leaves/LeaveLedger.jsx")),
+  LeaveLedger: lazyPage(() => import("./NAYSA Cloud/Leaves/LeaveLedger.jsx")),
+  LeaveCreditBalance: lazyPage(() => import("./NAYSA Cloud/Leaves/LeaveCreditBalance.jsx")),
   RefArea: lazyPage(() => import("./NAYSA Cloud/Reference File/RefArea.jsx")),
   RefBank: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBank.jsx")),
   RefHoliday: lazyPage(() => import("./NAYSA Cloud/Reference File/RefHoliday.jsx")),
