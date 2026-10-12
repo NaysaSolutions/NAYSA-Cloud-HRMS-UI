@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
+/* eslint-disable react/prop-types, react/no-unknown-property */
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -78,7 +79,13 @@ const CutoffLookupModal = ({
       });
 
       const rawData = result?.data?.[0]?.result || "[]";
-      return Array.isArray(rawData) ? rawData : JSON.parse(rawData);
+      const rows = Array.isArray(rawData) ? rawData : JSON.parse(rawData);
+      return rows.map((row) => ({
+        ...row,
+        cutoffCode: row.cutoffCode || row.code || "",
+        cutoffName: row.cutoffName || row.description || "",
+        cutoffFrequency: row.cutoffFrequency || row.cutoffFreq || "",
+      }));
     },
     enabled: isOpen,
     staleTime: 1000 * 60 * 5,
@@ -131,7 +138,8 @@ const CutoffLookupModal = ({
   const handleApply = (cutoff) => {
     const cutoffData = {
         cutoffCode: cutoff.cutoffCode,
-        cutoffName: cutoff.cutoffName
+        cutoffName: cutoff.cutoffName,
+        cutoffFrequency: cutoff.cutoffFrequency,
     };
     onClose(cutoffData, source);
   };
