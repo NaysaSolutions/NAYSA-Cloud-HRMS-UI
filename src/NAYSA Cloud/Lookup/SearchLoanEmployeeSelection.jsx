@@ -31,6 +31,7 @@ const SearchLoanEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   const [selectedLoans, setSelectedLoans] = useState([]);
   const [loadingReferences, setLoadingReferences] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [showParameters, setShowParameters] = useState(false);
   const [parameterValues, setParameterValues] = useState({ loanAmount: "0.00", amortizationAmount: "0.00", frequency: "" });
   const [frequencyOptions, setFrequencyOptions] = useState([]);
@@ -44,6 +45,7 @@ const SearchLoanEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
     setSelectedEmployees([]);
     setSelectedLoans([]);
     setShowParameters(false);
+    setGenerating(false);
     setParameterValues({ loanAmount: "0.00", amortizationAmount: "0.00", frequency: "" });
     setFrequencyOptions([]);
     setLoadingReferences(true);
@@ -72,19 +74,28 @@ const SearchLoanEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   const selectedLoanRows = useMemo(() => loans.filter((row) => selectedLoans.includes(row.code)), [loans, selectedLoans]);
   const apply = async () => {
     if (!selectedEmployeeRows.length || !selectedLoanRows.length) return useSwalValidationAlert({ title: "Selection Required", message: "Select at least one employee and one loan type." });
-    const employeeFrequencies = [...new Set(selectedEmployeeRows.map((employee) => employee.payFrequency).filter(Boolean))];
-    let options = [];
-    if (employeeFrequencies.length === 1) {
-      try {
+    setGenerating(true);
+    try {
+      const employeeFrequencies = [...new Set(selectedEmployeeRows.map((employee) => employee.payFrequency).filter(Boolean))];
+      let options = [];
+      if (employeeFrequencies.length === 1) {
         const response = await apiClient.post("/getHSDropdown", { json_data: { dropdownColumn: "FREQ", docCode: employeeFrequencies[0] } });
         const raw = response?.data?.data?.[0]?.result || "[]";
         const records = Array.isArray(raw) ? raw : JSON.parse(raw);
         options = records.map((record) => ({ value: record.DROPDOWN_CODE ?? record.dropdownCode ?? record.code ?? "", label: record.DROPDOWN_NAME ?? record.dropdownName ?? record.label ?? "" })).filter((option) => option.value);
-      } catch { options = []; }
+      }
+      setFrequencyOptions(options);
+      setParameterValues({ loanAmount: "0.00", amortizationAmount: "0.00", frequency: options[0]?.value || "" });
+      setShowParameters(true);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    } catch {
+      setFrequencyOptions([]);
+      setParameterValues({ loanAmount: "0.00", amortizationAmount: "0.00", frequency: "" });
+      setShowParameters(true);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    } finally {
+      setGenerating(false);
     }
-    setFrequencyOptions(options);
-    setParameterValues({ loanAmount: "0.00", amortizationAmount: "0.00", frequency: options[0]?.value || "" });
-    setShowParameters(true);
   };
 
   const confirmParameters = () => {
@@ -102,7 +113,7 @@ const SearchLoanEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   const selectClass = "h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none";
 
   return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-    {(loadingReferences || loadingEmployees) && <LoadingSpinner />}
+    {(loadingReferences || loadingEmployees || generating) && <LoadingSpinner />}
     <div className="flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b bg-slate-100"><h2 className="global-lookup-headertext-ui pl-3">Select Employees and Loan Types</h2><button onClick={() => onClose(null)} className="p-3 text-slate-400 hover:text-red-600"><FontAwesomeIcon icon={faTimes} size="lg" /></button></div>
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[280px_1fr_380px]">
@@ -134,7 +145,7 @@ const SearchLoanEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
           <div className="flex justify-end gap-2 border-t bg-slate-50 px-4 py-3"><button type="button" onClick={() => setShowParameters(false)} className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600">Back</button><button type="button" onClick={confirmParameters} className="rounded bg-blue-600 px-4 py-2 text-xs font-semibold text-white">Apply</button></div>
         </div>
       </div>}
-      <div className="global-lookup-footer-records-div-ui"><span className="global-lookup-footer-records-text-ui">{selectedEmployees.length} employee(s), {selectedLoans.length} loan type(s)</span><button type="button" onClick={apply} className="rounded bg-blue-600 px-5 py-2 text-xs font-semibold text-white">Generate</button></div>
+      <div className="global-lookup-footer-records-div-ui"><span className="global-lookup-footer-records-text-ui">{selectedEmployees.length} employee(s), {selectedLoans.length} loan type(s)</span><button type="button" onClick={apply} disabled={generating} className="rounded bg-blue-600 px-5 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Generate</button></div>
     </div>
     <SearchBranchRef isOpen={activeLookup === "branch"} title="Select Branch" onClose={(selected) => { if (selected) { setFilters((current) => ({ ...current, branchCode: selected.branchCode })); setFilterNames((current) => ({ ...current, branchName: selected.branchName })); } setActiveLookup(""); }} />
     <SearchPayGroupRef isOpen={activeLookup === "group"} onClose={(selected) => { if (selected) { setFilters((current) => ({ ...current, groupCode: selected.code })); setFilterNames((current) => ({ ...current, groupName: selected.name })); } setActiveLookup(""); }} />

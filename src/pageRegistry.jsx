@@ -1,4 +1,4 @@
-import React, { lazy } from "react";
+import { lazy } from "react";
 
 // Maps DB componentKey -> lazy React component. Keep keys stable because the
 // backend stores them in menu-routes/menu-items.
@@ -45,11 +45,10 @@ export const pageRegistry = {
   RefTaxTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefSSSTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
 
-  RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
-
-
   //TRANSACTIONS
   Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
+  LoanTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
+  Loans: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
