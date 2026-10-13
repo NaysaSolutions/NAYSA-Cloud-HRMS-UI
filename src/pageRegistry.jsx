@@ -47,8 +47,12 @@ export const pageRegistry = {
 
   //TRANSACTIONS
   Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
+<<<<<<< Updated upstream
   LoanTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
   Loans: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
+=======
+  LeaveTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LeaveTransaction.jsx")),
+>>>>>>> Stashed changes
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
