@@ -114,10 +114,10 @@ const LeaveLedger = () => {
     <div className="global-tran-table-main-div-ui mt-4"><SearchGlobalReferenceTable docType="EmployeeLeaveLedger" columns={columns} data={rows} isLoading={busy} itemsPerPage={50} autoFillGrid="True" onRefresh={loadRows} /></div>
 
     <SearchBranchRef isOpen={lookupState.isOpen && lookupState.key === "branchCode"} title="Select Branch" onClose={(selected) => { if (selected) setFilter("branchCode", selected.branchCode || selected.BRANCH_CODE || ""); closeLookup(); }} />
-    <SearchPayGroupRef isOpen={lookupState.isOpen && lookupState.key === "groupCode"} onClose={(selected) => { if (selected) setFilter("groupCode", selected.code); closeLookup(); }} />
-    <SearchDepartmentRef isOpen={lookupState.isOpen && lookupState.key === "deptCode"} onClose={(selected) => { if (selected) setFilter("deptCode", selected.code); closeLookup(); }} />
-    <SearchEmployeeStatusRef isOpen={lookupState.isOpen && lookupState.key === "statCode"} onClose={(selected) => { if (selected) setFilter("statCode", selected.code); closeLookup(); }} />
-    <SearchLeaveTypeRef isOpen={lookupState.isOpen && lookupState.key === "leaveType"} onClose={(selected) => { if (selected) setFilter("leaveType", selected.code); closeLookup(); }} />
+    <SearchPayGroupRef isOpen={lookupState.isOpen && lookupState.key === "groupCode"} referenceEndpoint="/leaveLedger/references" onClose={(selected) => { if (selected) setFilter("groupCode", selected.code); closeLookup(); }} />
+    <SearchDepartmentRef isOpen={lookupState.isOpen && lookupState.key === "deptCode"} referenceEndpoint="/leaveLedger/references" onClose={(selected) => { if (selected) setFilter("deptCode", selected.code); closeLookup(); }} />
+    <SearchEmployeeStatusRef isOpen={lookupState.isOpen && lookupState.key === "statCode"} referenceEndpoint="/leaveLedger/references" onClose={(selected) => { if (selected) setFilter("statCode", selected.code); closeLookup(); }} />
+    <SearchLeaveTypeRef isOpen={lookupState.isOpen && lookupState.key === "leaveType"} referenceEndpoint="/leaveLedger/references" onClose={(selected) => { if (selected) setFilter("leaveType", selected.code); closeLookup(); }} />
     <SearchGlobalLookupv1 isOpen={lookupState.isOpen && lookupState.key === "creditYear"} title="Select Credit Year" btnCaption="Apply Selection" singleSelect data={lookupState.options.map((item) => ({ groupId: String(item.value), code: String(item.value), description: String(item.label) }))} endpoint={[{ key: "code", label: "Year", width: 180 }]} onCancel={closeLookup} onClose={(selection) => { const selected = selection?.records?.[0]; if (selected) setFilter("creditYear", selected.code); closeLookup(); }} />
   </div>;
 };
