@@ -3,7 +3,6 @@
     useMemo,
     useRef,
     useState,
-    useCallback,
   } from "react";
   import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -16,14 +15,12 @@
     faSave,
     faUndo,
     faEdit,
-    faTrashAlt,
     faInfoCircle,
     faChevronDown,
     faFilePdf,
     faVideo,
     faBuilding,
     faCircleCheck,
-    faCircleXmark,
     faIdCard,
     faFileLines,
     faHandshake,
@@ -51,11 +48,12 @@
     useSwalValidationAlert,
   } from "@/NAYSA Cloud/Global/behavior.jsx";
 
-  import {
-    useFieldLenghtCheck,
-  } from "@/NAYSA Cloud/Global/procedure";
-
   const DOC_TYPE = "RefEmployeeGovInfo";
+
+  const BANK_COMP_OPTIONS = [
+    { value: "A", label: "Amount" },
+    { value: "P", label: "Percentage" },
+  ];
 
   const INITIAL_FORM = {
       empNo: "",
@@ -222,7 +220,7 @@
               lastUpdatedBy: row.updatedBy ?? "",
               lastUpdatedDate: row.updatedDate ?? "",
           });
-          setIsEditing(false);
+          setIsEditing(true);
           setIsFieldsExpanded(true);
       
           setMainActiveTab("empHeader");
@@ -660,6 +658,7 @@
                     }
                   />
                 </div>
+
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
                   <span className="flex h-8 w-7 shrink-0 items-center justify-center">
                     <FontAwesomeIcon icon={faFileLines} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
@@ -675,6 +674,7 @@
                     }
                   />
                 </div>
+
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
                   <span className="flex h-8 w-7 shrink-0 items-center justify-center">
                     <FontAwesomeIcon icon={faHandshake} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
@@ -688,6 +688,7 @@
                     onChange={(v) => updateForm({ sssNo: v })}
                   />
                 </div>
+
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
                   <span className="flex h-8 w-7 shrink-0 items-center justify-center">
                     <FontAwesomeIcon icon={faHouseUser} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
@@ -738,11 +739,31 @@
                       <span className="shrink-0 rounded bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">Required</span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
-                      <FieldRenderer label="Bank Code" type="text" value={formData.bankCode} disabled={!isEditing} onChange={(v) => updateForm({ bankCode: (v || "").toUpperCase() })} />
-                      <FieldRenderer label="Bank Name" type="text" value={formData.bankName} disabled={!isEditing || !!selectedEmployeeInfo} onChange={(v) => updateForm({ bankName: (v || "").toUpperCase() })} />
+                      <FieldRenderer 
+                        label="Bank Code" 
+                        readOnly
+                        type="lookup" 
+                        value={formData.bankCode} 
+                        disabled={!isEditing} 
+                        onChange={(v) => updateForm({ bankCode: (v || "").toUpperCase() })} 
+                      />
+                      <FieldRenderer 
+                        label="Bank Name" 
+                        type="text" 
+                        value={formData.bankName} 
+                        disabled={!isEditing || !!selectedEmployeeInfo} 
+                        onChange={(v) => updateForm({ bankName: (v || "").toUpperCase() })} 
+                      />
+
                       <div className="sm:col-span-2 space-y-2">
-                        <FieldRenderer label="Account Number" type="text" value={formData.bankAcct} disabled={!isEditing} onChange={(v) => updateForm({ bankAcct: (v || "").toUpperCase() })} />
+                        <FieldRenderer 
+                          label="Account Number" 
+                          type="text" 
+                          value={formData.bankAcct} disabled={!isEditing} 
+                          onChange={(v) => updateForm({ bankAcct: (v || "").toUpperCase() })} 
+                        />
                       </div>
+
                     </div>
                   </div>
 
@@ -755,12 +776,45 @@
                       <span className="shrink-0 rounded bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">Optional</span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
-                      <FieldRenderer label="Bank Code" type="text" value={formData.bankCode2} disabled={!isEditing} onChange={(v) => updateForm({ bankCode2: (v || "").toUpperCase() })} />
-                      <FieldRenderer label="Bank Name" type="text" value={formData.bankName2} disabled={!isEditing || !!selectedEmployeeInfo} onChange={(v) => updateForm({ bankName2: (v || "").toUpperCase() })} />
+                      <FieldRenderer 
+                        label="Bank Code" 
+                        type="text" 
+                        value={formData.bankCode2} 
+                        disabled={!isEditing} 
+                        onChange={(v) => updateForm({ bankCode2: (v || "").toUpperCase() })} 
+                      />
+
+                      <FieldRenderer 
+                        label="Bank Name" 
+                        type="text" 
+                        value={formData.bankName2} 
+                        disabled={!isEditing || !!selectedEmployeeInfo} 
+                        onChange={(v) => updateForm({ bankName2: (v || "").toUpperCase() })} 
+                      />
+
                       <div className="sm:col-span-2 space-y-2">
-                        <FieldRenderer label="Account Number" type="text" value={formData.bankAcct2} disabled={!isEditing} onChange={(v) => updateForm({ bankAcct2: (v || "").toUpperCase() })} />
-                        <FieldRenderer label="Bank Computation Method" type="text" value={formData.bank2Comp} disabled={!isEditing} onChange={(v) => updateForm({ bank2Comp: (v || "").toUpperCase() })} />
-                        <FieldRenderer label="Bank 2 Company" type="text" value={formData.bank2} disabled={!isEditing} onChange={(v) => updateForm({ bank2: (v || "").toUpperCase() })} />
+                        <FieldRenderer 
+                          label="Account Number" 
+                          type="text" 
+                          value={formData.bankAcct2} 
+                          disabled={!isEditing} 
+                          onChange={(v) => updateForm({ bankAcct2: (v || "").toUpperCase() })} 
+                        />
+                        <FieldRenderer 
+                          label="Bank Computation Method" 
+                          type="select" 
+                          value={formData.bank2Comp} 
+                          disabled={!isEditing} 
+                          options={BANK_COMP_OPTIONS}
+                          onChange={(v) => updateForm({ bank2Comp: (v || "").toUpperCase() })} 
+                        />
+                        <FieldRenderer 
+                          label="Bank 2 Company" 
+                          type="number" 
+                          value={formData.bank2}
+                          disabled={!isEditing} 
+                          onChange={(v) => updateForm({ bank2: (v || "").toUpperCase() })} 
+                        />
                       </div>
                     </div>
                   </div>
@@ -774,12 +828,42 @@
                       <span className="shrink-0 rounded bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">Optional</span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
-                      <FieldRenderer label="Bank Code" type="text" value={formData.bankCode3} disabled={!isEditing} onChange={(v) => updateForm({ bankCode3: (v || "").toUpperCase() })} />
-                      <FieldRenderer label="Bank Name" type="text" value={formData.bankName3} disabled={!isEditing || !!selectedEmployeeInfo} onChange={(v) => updateForm({ bankName3: (v || "").toUpperCase() })} />
+                      <FieldRenderer 
+                        label="Bank Code" 
+                        type="text" 
+                        value={formData.bankCode3} 
+                        disabled={!isEditing} 
+                        onChange={(v) => updateForm({ bankCode3: (v || "").toUpperCase() })}  
+                      />
+                      <FieldRenderer 
+                        label="Bank Name" 
+                        type="text" 
+                        value={formData.bankName3} 
+                        disabled={!isEditing || !!selectedEmployeeInfo} 
+                        onChange={(v) => updateForm({ bankName3: (v || "").toUpperCase() })} 
+                      />
                       <div className="sm:col-span-2 space-y-2">
-                        <FieldRenderer label="Account Number" type="text" value={formData.bankAcct3} disabled={!isEditing} onChange={(v) => updateForm({ bankAcct3: (v || "").toUpperCase() })} />
-                        <FieldRenderer label="Bank Computation Method" type="text" value={formData.bank3Comp} disabled={!isEditing} onChange={(v) => updateForm({ bank3Comp: (v || "").toUpperCase() })} />
-                        <FieldRenderer label="Bank 3 Company" type="text" value={formData.bank3} disabled={!isEditing} onChange={(v) => updateForm({ bank3: (v || "").toUpperCase() })} />
+                        <FieldRenderer 
+                          label="Account Number" 
+                          type="text" 
+                          value={formData.bankAcct3} 
+                          disabled={!isEditing} 
+                          onChange={(v) => updateForm({ bankAcct3: (v || "").toUpperCase() })} 
+                        />
+                        <FieldRenderer 
+                          label="Bank Computation Method" 
+                          type="select" 
+                          value={formData.bank3Comp} 
+                          disabled={!isEditing} 
+                          options={BANK_COMP_OPTIONS}
+                          onChange={(v) => updateForm({ bank3Comp: (v || "").toUpperCase() })}  
+                        />
+                        <FieldRenderer 
+                          label="Bank 3 Company" 
+                          type="number" 
+                          value={formData.bank3} 
+                          disabled={!isEditing} 
+                          onChange={(v) => updateForm({ bank3: (v || "").toUpperCase() })} />
                       </div>
                     </div>
                   </div>
