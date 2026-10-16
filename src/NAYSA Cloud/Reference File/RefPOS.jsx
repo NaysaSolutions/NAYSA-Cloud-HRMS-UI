@@ -95,7 +95,7 @@ const RefPOS = () => {
     const updateForm = (updates) => setFormData((p) => ({ ...p, ...updates }));
 
     const getActiveLabel = (active) => 
-        String(active || "").toUpperCase() === "Y" ? "Yes" : "No";
+        String(active || "").toUpperCase() === "Y" ? "Yes" : "No"; //
 
     // --- TANSTACK QUERY: LIST ---
     const { data: poss = [], isLoading: isListLoading } = useQuery({

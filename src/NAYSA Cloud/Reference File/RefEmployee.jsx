@@ -56,7 +56,7 @@ const DROPDOWN_REQUESTS = {
   payMode: { dropdownColumn: "PAYMODE", docCode: "PAYMODE" },
   taxTable: { dropdownColumn: "TAXTBL", docCode: "TAXTBL" },
 };
-
+ 
 const fetchEmployeeDropdown = async ({ dropdownColumn, docCode }) => {
   try {
     const payload = { json_data: { dropdownColumn, docCode } };

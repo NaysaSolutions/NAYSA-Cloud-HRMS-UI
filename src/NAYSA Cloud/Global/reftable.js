@@ -24,6 +24,7 @@ export const reftables = {
     GovtTAX: "Withholding Tax Table",
     Holiday: "Holiday Codes",
     Employee: "Employee Masterdata",
+    RefEmployeeGovInfo: "Employee Government Information",
     BankType: "Bank Type Codes",
     UserAccRight: "User Access Rights",
     Company: "Company ID",

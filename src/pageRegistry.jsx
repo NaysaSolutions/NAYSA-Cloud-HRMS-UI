@@ -38,7 +38,8 @@ export const pageRegistry = {
   RefLeave: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLeave.jsx")),
   RefOvertime: lazyPage(() => import("./NAYSA Cloud/Reference File/RefOvertime.jsx")),
   RefEmployeeStatus: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeStatus.jsx")),
-    RefClient: lazyPage(() => import("./NAYSA Cloud/Reference File/RefClient.jsx")),
+  RefClient: lazyPage(() => import("./NAYSA Cloud/Reference File/RefClient.jsx")),
+  RefEmployeeGovInfo: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeGovInfo.jsx")),
   
   RefGovtSSS: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
   RefGovtTAX: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
@@ -47,12 +48,7 @@ export const pageRegistry = {
 
   //TRANSACTIONS
   Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
-<<<<<<< Updated upstream
-  LoanTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
-  Loans: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
-=======
-  LeaveTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LeaveTransaction.jsx")),
->>>>>>> Stashed changes
+  // LeaveTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LeaveTransaction.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
