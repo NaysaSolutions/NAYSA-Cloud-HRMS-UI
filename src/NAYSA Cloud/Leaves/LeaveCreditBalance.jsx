@@ -197,22 +197,22 @@ const LeaveCreditBalance = () => {
       }}
     />
 
-    <SearchPayGroupRef isOpen={lookupState.isOpen && lookupState.key === "groupCode"} onClose={(selected) => {
+    <SearchPayGroupRef isOpen={lookupState.isOpen && lookupState.key === "groupCode"} referenceEndpoint="/leaveCreditBalance/references" onClose={(selected) => {
       if (selected) setFilter("groupCode", selected.code);
       setLookupState({ isOpen: false, key: "", label: "", options: [] });
     }} />
 
-    <SearchDepartmentRef isOpen={lookupState.isOpen && lookupState.key === "deptCode"} onClose={(selected) => {
+    <SearchDepartmentRef isOpen={lookupState.isOpen && lookupState.key === "deptCode"} referenceEndpoint="/leaveCreditBalance/references" onClose={(selected) => {
       if (selected) setFilter("deptCode", selected.code);
       setLookupState({ isOpen: false, key: "", label: "", options: [] });
     }} />
 
-    <SearchEmployeeStatusRef isOpen={lookupState.isOpen && lookupState.key === "statCode"} onClose={(selected) => {
+    <SearchEmployeeStatusRef isOpen={lookupState.isOpen && lookupState.key === "statCode"} referenceEndpoint="/leaveCreditBalance/references" onClose={(selected) => {
       if (selected) setFilter("statCode", selected.code);
       setLookupState({ isOpen: false, key: "", label: "", options: [] });
     }} />
 
-    <SearchLeaveTypeRef isOpen={lookupState.isOpen && lookupState.key === "leaveType"} onClose={(selected) => {
+    <SearchLeaveTypeRef isOpen={lookupState.isOpen && lookupState.key === "leaveType"} referenceEndpoint="/leaveCreditBalance/references" onClose={(selected) => {
       if (selected) setFilter("leaveType", selected.code);
       setLookupState({ isOpen: false, key: "", label: "", options: [] });
     }} />
@@ -238,4 +238,3 @@ const LeaveCreditBalance = () => {
 };
 
 export default LeaveCreditBalance;
-

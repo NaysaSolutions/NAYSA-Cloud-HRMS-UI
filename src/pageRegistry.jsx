@@ -48,7 +48,13 @@ export const pageRegistry = {
 
   //TRANSACTIONS
   Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
-  // LeaveTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LeaveTransaction.jsx")),
+  LoanTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
+  Loans: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
+  LoanLedger: lazyPage(() => import("./NAYSA Cloud/Payroll/LoanLedger.jsx")),
+  LeaveTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LeaveTransaction.jsx")),
+  BonusProcessing: lazyPage(() => import("./NAYSA Cloud/Payroll/BonusProcessing.jsx")),
+  TaxReconciliation: lazyPage(() => import("./NAYSA Cloud/Payroll/TaxReconciliation.jsx")),
+  BIRAlphalist: lazyPage(() => import("./NAYSA Cloud/Payroll/BIRAlphalist.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),

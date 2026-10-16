@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueries } from "@tanstack/react-query";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faMagnifyingGlass, faPlus, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
+import { faClone, faEye, faMagnifyingGlass, faPlus, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "@/NAYSA Cloud/Authentication/AuthContext.jsx";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import Header from "@/NAYSA Cloud/Components/Header.jsx";
@@ -12,32 +12,31 @@ import AllTranHistory from "@/NAYSA Cloud/Lookup/SearchGlobalTranHistory.jsx";
 import SearchEmployeeRef from "@/NAYSA Cloud/Lookup/SearchEmployeeRef.jsx";
 import SearchLoanEmployeeSelection from "@/NAYSA Cloud/Lookup/SearchLoanEmployeeSelection.jsx";
 import SearchLoanRef from "@/NAYSA Cloud/Lookup/SearchLoanRef.jsx";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef.jsx";
 import CancelTranModal from "@/NAYSA Cloud/Lookup/SearchCancelRef.jsx";
 import AttachDocumentModal from "@/NAYSA Cloud/Lookup/SearchAttachment.jsx";
 import DocumentSignatories from "@/NAYSA Cloud/Lookup/SearchSignatory.jsx";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import { useHandlePrint } from "@/NAYSA Cloud/Global/report.js";
-import { useSwalErrorAlert, useSwalErrorAlertAPI, useSwalSuccessAlert, useSwalValidationAlert, useSwalshowSaveSuccessDialog } from "@/NAYSA Cloud/Global/behavior.jsx";
+import { useSwalErrorAlert, useSwalErrorAlertAPI, useSwalInfoAlert, useSwalProceedConfirm, useSwalSuccessAlert, useSwalValidationAlert, useSwalshowSaveSuccessDialog } from "@/NAYSA Cloud/Global/behavior.jsx";
 
 const toDisplayDate = (value) => /^\d{2}\/\d{2}\/\d{4}$/.test(String(value || "")) ? String(value) : formatDateToMMDDYYYY(value);
 const createGroupId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const today = formatDateToMMDDYYYY(new Date().toISOString().slice(0, 10));
 const docType = "LN";
-const initialHeader = { loanId: "", loanNo: "", transactionDate: today, cutoffFrequency: "", cutoffCode: "", cutoffName: "", remarks: "", documentStatus: "D" };
+const initialHeader = { loanId: "", loanNo: "", transactionDate: today, cutoffFrequency: "", remarks: "", documentStatus: "D" };
 const getCutoffFrequency = (cutoffType) => {
   const value = String(cutoffType || "").trim().toUpperCase();
   if (value.startsWith("S")) return "S";
   if (value.startsWith("M")) return "M";
   return value ? "D" : "";
 };
-const createInitialHeader = (companyInfo) => ({ ...initialHeader, cutoffFrequency: getCutoffFrequency(companyInfo?.cutoffType), cutoffCode: companyInfo?.cutoffCode || "", cutoffName: companyInfo?.cutoffName || "" });
+const createInitialHeader = (companyInfo) => ({ ...initialHeader, cutoffFrequency: getCutoffFrequency(companyInfo?.cutoffType) });
 const createRow = () => ({ groupId: createGroupId(), empNo: "", empName: "", referenceNo: "", voucherNo: "", loanCode: "", loanName: "", dateGranted: today, beginningCutoff: "", endingCutoff: "", deductionStartDate: today, deductionEndDate: "", payFrequency: "", frequency: "", holdFlag: "N", loanAmount: "0.00", amortizationAmount: "0.00", interestAmount: "0.00", outstandingBalance: 0, totalPaid: 0 });
 const parseResult = (response, fallback = []) => { try { return JSON.parse(response?.data?.data?.[0]?.result || JSON.stringify(fallback)); } catch { return fallback; } };
 const numeric = (value) => Number(String(value ?? "").replace(/,/g, "")) || 0;
 const decimal = (value) => numeric(value).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const normalizeLoanRow = (row) => ({ ...row, dateGranted: toDisplayDate(row.dateGranted), deductionStartDate: toDisplayDate(row.deductionStartDate), deductionEndDate: toDisplayDate(row.deductionEndDate), loanAmount: decimal(row.loanAmount), amortizationAmount: decimal(row.amortizationAmount) });
-const getRowBalance = (row) => row.loanDetailId ? numeric(row.outstandingBalance) : numeric(row.loanAmount) + numeric(row.interestAmount);
+const getRowBalance = (row) => numeric(row.totalPaid) > 0 ? numeric(row.outstandingBalance) : numeric(row.loanAmount) + numeric(row.interestAmount);
 const loanColumns = [["ln", "LN", 70], ["empNo", "Employee No.", 120], ["empName", "Employee Name", 220], ["referenceNo", "Reference No. *", 140], ["loanCode", "Loan Code", 115], ["loanName", "Loan Description", 210], ["dateGranted", "Date Granted", 130], ["deductionStartDate", "Loan Start", 130], ["deductionEndDate", "Loan End", 130], ["frequency", "Frequency", 170], ["holdFlag", "Hold", 75], ["loanAmount", "Loan Amount", 125], ["amortizationAmount", "Amortization *", 125], ["outstandingBalance", "Balance", 125], ["totalPaid", "Total Paid", 115]];
 const paymentColumns = [["paymentNo", "LN", 70], ["empName", "Employee Name", 220], ["cutoffCode", "Cut-Off", 100], ["frequency", "Frequency", 90], ["loanName", "Loan Description", 210], ["referenceNo", "Reference No.", 140], ["loanAmount", "Loan Amount", 125], ["paymentAmount", "Payment", 120], ["endingBalance", "Balance", 125], ["totalPaid", "Total Paid", 115], ["previousBalance", "Previous Balance", 130], ["holdFlag", "Hold", 80], ["paymentReferenceNo", "Tran No.", 130]];
 
@@ -54,6 +53,7 @@ const LoanTransaction = () => {
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [showSignatoryModal, setShowSignatoryModal] = useState(false);
   const [noReprints, setNoReprints] = useState(0);
+  const [replicateValues, setReplicateValues] = useState({ loanAmount: "0.00", amortizationAmount: "0.00" });
   const [selectedPaymentGroupId, setSelectedPaymentGroupId] = useState("");
   const [lookup, setLookup] = useState({ type: "", index: null });
   const [loanWidths, setLoanWidths] = useState(() => ({ ...Object.fromEntries(loanColumns.map(([key, , width]) => [key, width])), actions: 90 }));
@@ -78,11 +78,11 @@ const LoanTransaction = () => {
     onError: (error) => useSwalErrorAlertAPI("Transaction Error", error),
   });
   const busy = saveMutation.isPending || actionMutation.isPending || loadingTransaction;
-  const reset = () => { setHeader(createInitialHeader(companyInfo)); setRows([]); setPayments([]); setSelectedPaymentGroupId(""); setNoReprints(0); setTopTab("details"); setDetailTab("loans"); };
+  const reset = () => { setHeader(createInitialHeader(companyInfo)); setRows([]); setPayments([]); setSelectedPaymentGroupId(""); setNoReprints(0); setReplicateValues({ loanAmount: "0.00", amortizationAmount: "0.00" }); setTopTab("details"); setDetailTab("loans"); };
 
   useEffect(() => {
     if (!refsLoaded || !companyInfo) return;
-    setHeader((current) => current.loanId || current.loanNo ? current : { ...current, cutoffFrequency: current.cutoffFrequency || getCutoffFrequency(companyInfo.cutoffType), cutoffCode: current.cutoffCode || companyInfo.cutoffCode || "", cutoffName: current.cutoffName || companyInfo.cutoffName || "" });
+    setHeader((current) => current.loanId || current.loanNo ? current : { ...current, cutoffFrequency: current.cutoffFrequency || getCutoffFrequency(companyInfo.cutoffType) });
   }, [companyInfo, refsLoaded]);
   const addSelections = ({ employees, loans, loanAmount, amortizationAmount, frequency }) => {
     const exceedsBalance = numeric(amortizationAmount) > numeric(loanAmount);
@@ -91,7 +91,7 @@ const LoanTransaction = () => {
   };
   const removeRow = (index) => setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
   const validate = () => {
-    if (!header.transactionDate || !header.cutoffFrequency || !header.cutoffCode) return "Transaction Date, Frequency, and Payroll Cut-Off are required.";
+    if (!header.transactionDate || !header.cutoffFrequency) return "Transaction Date and Frequency are required.";
     if (!rows.length) return "Add at least one loan detail row.";
     const loanReferences = new Set();
     for (const row of rows) {
@@ -108,7 +108,7 @@ const LoanTransaction = () => {
     }
     return "";
   };
-  const save = () => { const message = validate(); if (message) return useSwalValidationAlert({ title: "Check Loan Transaction", message }); saveMutation.mutate(); };
+  const save = () => { const message = validate(); if (message) return useSwalErrorAlert("Check Loan Transaction", message); saveMutation.mutate(); };
   const closeCancelModal = (confirmation) => {
     if (!confirmation) return setShowCancelModal(false);
     actionMutation.mutate({ mode: "cancel", password: confirmation.password, reason: confirmation.reason });
@@ -170,6 +170,56 @@ const LoanTransaction = () => {
     return true;
   };
   const numberCell = (row, index, field) => <input ref={(element) => { inputRefs.current[`${field}-${index}`] = element; }} value={row[field] ?? ""} readOnly={isReadOnly} inputMode="decimal" onFocus={(event) => { if (!isReadOnly) event.target.value = String(event.target.value).replace(/,/g, ""); }} onChange={(event) => { const value = event.target.value.replace(/,/g, ""); if (/^\d*(\.\d{0,2})?$/.test(value)) updateRow(index, { [field]: value }); }} onBlur={() => formatNumberCell(row, index, field)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); if (formatNumberCell(row, index, field)) focusNext(index, field); } }} className="global-tran-td-inputclass-ui h-7 w-full bg-transparent text-right text-xs" />;
+  const updateReplicateValue = (field, value) => {
+    const normalized = String(value || "").replace(/,/g, "");
+    if (/^\d*(\.\d{0,2})?$/.test(normalized)) setReplicateValues((current) => ({ ...current, [field]: normalized }));
+  };
+  const focusReplicateValue = (field, event) => {
+    if (numeric(replicateValues[field]) === 0) {
+      setReplicateValues((current) => ({ ...current, [field]: "" }));
+      return;
+    }
+    event.target.select();
+  };
+  const formatReplicateValue = (field) => {
+    if (field === "amortizationAmount" && numeric(replicateValues.amortizationAmount) > numeric(replicateValues.loanAmount)) {
+      setReplicateValues((current) => ({ ...current, amortizationAmount: "0.00" }));
+      useSwalErrorAlert("Invalid Amortization", "Amortization cannot be greater than Loan Amount. It has been reset to 0.00.");
+      return;
+    }
+    setReplicateValues((current) => ({ ...current, [field]: decimal(current[field]) }));
+  };
+  const replicateLoanAmount = async () => {
+    if (!rows.length) return useSwalInfoAlert("Loan Details Required", "Add loan details before replicating Loan Amount.");
+    const loanAmount = numeric(replicateValues.loanAmount);
+    const confirmation = await useSwalProceedConfirm("Apply Loan Amount?", "Apply this Loan Amount to all loan details?", "Apply", "Cancel");
+    if (!confirmation.isConfirmed) return;
+    let resetAmortization = false;
+    setRows((current) => current.map((row) => {
+      const nextRow = { ...row, loanAmount: decimal(loanAmount) };
+      if (numeric(nextRow.amortizationAmount) > getRowBalance(nextRow)) {
+        resetAmortization = true;
+        nextRow.amortizationAmount = "0.00";
+      }
+      return nextRow;
+    }));
+    if (resetAmortization) useSwalErrorAlert("Invalid Amortization", "Amortization Amount exceeding the new Balance was reset to 0.00.");
+  };
+  const replicateAmortization = async () => {
+    if (!rows.length) return useSwalInfoAlert("Loan Details Required", "Add loan details before replicating Amortization.");
+    const amortizationAmount = numeric(replicateValues.amortizationAmount);
+    if (amortizationAmount > numeric(replicateValues.loanAmount)) {
+      setReplicateValues((current) => ({ ...current, amortizationAmount: "0.00" }));
+      return useSwalErrorAlert("Invalid Amortization", "Amortization cannot be greater than Loan Amount. It has been reset to 0.00.");
+    }
+    if (rows.some((row) => amortizationAmount > getRowBalance(row))) {
+      setReplicateValues((current) => ({ ...current, amortizationAmount: "0.00" }));
+      return useSwalErrorAlert("Invalid Amortization", "Amortization Amount cannot be greater than Balance. It has been reset to 0.00.");
+    }
+    const confirmation = await useSwalProceedConfirm("Apply Amortization?", "Apply this Amortization to all loan details?", "Apply", "Cancel");
+    if (!confirmation.isConfirmed) return;
+    setRows((current) => current.map((row) => ({ ...row, amortizationAmount: decimal(amortizationAmount) })));
+  };
   const lookupCell = (row, index, type) => <div className="relative flex items-center"><input value={type === "employee" ? row.empNo : row.loanCode} readOnly onClick={() => !isReadOnly && setLookup({ type, index })} className="global-tran-td-inputclass-ui h-7 w-full cursor-pointer bg-transparent pr-7 text-xs" /><FontAwesomeIcon icon={faMagnifyingGlass} onClick={() => !isReadOnly && setLookup({ type, index })} className="absolute right-2 cursor-pointer text-xs text-blue-600" /></div>;
   const payFrequencies = useMemo(() => [...new Set(rows.map((row) => row.payFrequency).filter(Boolean))], [rows]);
   const frequencyQueries = useQueries({ queries: payFrequencies.map((docCode) => ({ queryKey: ["loanFrequency", docCode], queryFn: async () => { const response = await apiClient.post("/getHSDropdown", { json_data: { dropdownColumn: "FREQ", docCode } }); const raw = response?.data?.data?.[0]?.result || "[]"; const records = Array.isArray(raw) ? raw : JSON.parse(raw); return records.map((record) => ({ value: record.DROPDOWN_CODE ?? record.dropdownCode ?? record.code ?? "", label: record.DROPDOWN_NAME ?? record.dropdownName ?? record.label ?? "" })).filter((option) => option.value); }, staleTime: 300000 })) });
@@ -197,7 +247,7 @@ const LoanTransaction = () => {
         <div className="global-tran-textbox-group-div-ui"><FieldRenderer label="Transaction No." type="text" value={header.loanNo || "Auto Generated"} disabled /></div>
         <div className="global-tran-textbox-group-div-ui"><div className="relative w-full"><div className={`flex items-stretch global-ref-textbox-ui ${!isReadOnly ? "global-ref-textbox-enabled" : "global-ref-textbox-disabled"}`}><DateFormatInput id="transactionDate" className="peer flex-grow cursor-pointer border-none bg-transparent px-3 focus:outline-none" value={header.transactionDate} disabled={isReadOnly} updateState={(values) => updateHeader({ transactionDate: values.transactionDate })} /></div><label htmlFor="transactionDate" className="global-ref-floating-label">Transaction Date <span className="text-red-500">*</span></label></div></div>
         <div className="global-tran-textbox-group-div-ui"><FieldRenderer id="loanFrequency" label="Frequency" required type="select" value={header.cutoffFrequency} options={[{ value: "S", label: "Semi-Monthly" }, { value: "M", label: "Monthly" }, { value: "D", label: "Weekly" }]} placeholder="Select Frequency" disabled={isReadOnly} hideClearButton onChange={(value) => updateHeader({ cutoffFrequency: value })} /></div>
-        <div className="global-tran-textbox-group-div-ui"><FieldRenderer label="Payroll Cut-Off" required type="lookup" value={header.cutoffCode ? `(${header.cutoffCode}) - ${header.cutoffName}` : ""} disabled={isReadOnly} onLookup={() => setLookup({ type: "cutoff", index: null })} onClear={() => updateHeader({ cutoffCode: "", cutoffName: "" })} /></div>
+        <div className="flex min-w-0 items-end gap-2 lg:-mt-4 lg:-translate-y-2"><div className="flex min-w-0 flex-1 items-end gap-1"><div className="min-w-0 flex-1"><FieldRenderer id="replicateLoanAmount" label="Loan Amount" type="amount" value={replicateValues.loanAmount} inputMode="decimal" disabled={isReadOnly || !rows.length} hideClearButton onFocus={(event) => focusReplicateValue("loanAmount", event)} onChange={(value) => updateReplicateValue("loanAmount", value)} onBlur={() => formatReplicateValue("loanAmount")} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /></div><button type="button" title="Replicate Loan Amount" disabled={isReadOnly || !rows.length} onClick={replicateLoanAmount} className="global-tran-td-button-add-ui mb-[9px] h-8 w-8 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"><FontAwesomeIcon icon={faClone} /></button></div><div className="flex min-w-0 flex-1 items-end gap-1"><div className="min-w-0 flex-1"><FieldRenderer id="replicateAmortization" label="Amortization" type="amount" value={replicateValues.amortizationAmount} inputMode="decimal" disabled={isReadOnly || !rows.length} hideClearButton onFocus={(event) => focusReplicateValue("amortizationAmount", event)} onChange={(value) => updateReplicateValue("amortizationAmount", value)} onBlur={() => formatReplicateValue("amortizationAmount")} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /></div><button type="button" title="Replicate Amortization" disabled={isReadOnly || !rows.length} onClick={replicateAmortization} className="global-tran-td-button-add-ui mb-[9px] h-8 w-8 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"><FontAwesomeIcon icon={faClone} /></button></div></div>
         <div className="col-span-full"><div className="relative p-2"><textarea id="remarks" rows={4} className="peer global-tran-textbox-remarks-ui pt-2" value={header.remarks} onChange={(event) => updateHeader({ remarks: event.target.value })} disabled={isReadOnly} /><label htmlFor="remarks" className="global-tran-floating-label-remarks">Remarks</label></div></div>
       </div></div>
 
@@ -212,7 +262,6 @@ const LoanTransaction = () => {
     <SearchEmployeeRef isOpen={lookup.type === "employee"} onClose={(selected) => { if (selected) updateRow(lookup.index, { empNo: selected.empNo, empName: selected.empName }); setLookup({ type: "", index: null }); }} />
     <SearchLoanEmployeeSelection isOpen={lookup.type === "employees"} payFrequency={header.cutoffFrequency} onClose={(selected) => { if (selected) addSelections(selected); setLookup({ type: "", index: null }); }} />
     <SearchLoanRef isOpen={lookup.type === "loan"} onClose={(selected) => { if (selected) updateRow(lookup.index, { loanCode: selected.code, loanName: selected.description }); setLookup({ type: "", index: null }); }} />
-    <CutoffLookupModal isOpen={lookup.type === "cutoff"} customParam="All" title="Select Payroll Cut-Off" onClose={(selected) => { if (selected) updateHeader({ cutoffCode: selected.cutoffCode, cutoffName: selected.cutoffName }); setLookup({ type: "", index: null }); }} />
     {showCancelModal && <CancelTranModal isOpen={showCancelModal} onClose={closeCancelModal} />}
     {showAttachModal && <AttachDocumentModal isOpen={showAttachModal} params={{ DocumentID: header.loanId, DocumentName: "Loan Transaction", DocumentNo: header.loanNo, viewOnly: header.documentStatus === "X" }} onClose={() => setShowAttachModal(false)} />}
     {showSignatoryModal && <DocumentSignatories isOpen={showSignatoryModal} params={{ noReprints, documentID: header.loanId, docType, docNo: header.loanNo }} onClose={closeSignatoryModal} onCancel={() => setShowSignatoryModal(false)} />}
