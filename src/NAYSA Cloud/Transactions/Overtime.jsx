@@ -100,8 +100,13 @@ const decimal = (value) =>
 const normalizeRow = (row) => ({
   ...row,
   otDateDetail: toDisplayDate(row.otDateDetail),
+  startDate: toDisplayDate(row.startDate || row.otDateDetail),
+  endDate: toDisplayDate(row.endDate || row.otDateDetail),
   otHours: decimal(row.otHours),
+  otRate: decimal(row.otRate),
   otAmount: decimal(row.otAmount),
+  mealAllow: decimal(row.mealAllow),
+  transpoAllow: decimal(row.transpoAllow),
 });
 
 const otColumns = [
@@ -170,16 +175,18 @@ const OvertimeTransaction = () => {
           ),
           otDate: formatDateToYYYYMMDD(header.otDate),
           userCode: user?.USER_CODE || "ADMIN",
-          rows: rows.map((row, index) => ({
-            ...row,
-            lineNo: index + 1,
-            otDateDetail: formatDateToYYYYMMDD(row.otDateDetail),
-            otHours: numeric(row.otHours),
-            otAmount: numeric(row.otAmount),
-            otRate: numeric(row.otRate),
-            mealAllow: numeric(row.mealAllow),
-            transpoAllow: numeric(row.transpoAllow),
-          })),
+rows: rows.map((row, index) => ({
+  ...row,
+  lineNo: index + 1,
+  otDateDetail: formatDateToYYYYMMDD(row.otDateDetail),
+  startDate: formatDateToYYYYMMDD(row.startDate || row.otDateDetail),
+  endDate: formatDateToYYYYMMDD(row.endDate || row.otDateDetail),
+  otHours: numeric(row.otHours),
+  otAmount: numeric(row.otAmount),
+  otRate: numeric(row.otRate),
+  mealAllow: numeric(row.mealAllow),
+  transpoAllow: numeric(row.transpoAllow),
+})),
         },
       }),
     onSuccess: async (response) => {

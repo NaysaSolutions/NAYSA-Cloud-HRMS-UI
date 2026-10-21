@@ -1,16 +1,11 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
-
-const parseResult = (response, fallback = {}) => {
-  try {
-    return JSON.parse(response?.data?.data?.[0]?.result || JSON.stringify(fallback));
-  } catch {
-    return fallback;
-  }
-};
+import { useSwalErrorAlertAPI as showErrorAlert } from "@/NAYSA Cloud/Global/behavior.jsx";
+import { parseOvertimeReferences } from "@/NAYSA Cloud/Global/overtimeSelection.js";
 
 const SearchOvertimeRef = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
@@ -19,18 +14,28 @@ const SearchOvertimeRef = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (!isOpen) return;
+    const controller = new AbortController();
     setSearch("");
+    setOvertimes([]);
     const loadOvertimes = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get("/overtimeTransactions/selectionReferences");
-        const data = parseResult(response, { overtimes: [] });
-        setOvertimes(data.overtimes || []);
+        const response = await apiClient.get("/overtimeTransactions/selectionReferences", {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        const data = parseOvertimeReferences(response);
+        setOvertimes(data.overtimes);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          showErrorAlert("Reference Load Error", error?.response?.data?.message || error.message);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
     loadOvertimes();
+    return () => controller.abort();
   }, [isOpen]);
 
   const filtered = useMemo(() => {
@@ -81,6 +86,13 @@ const SearchOvertimeRef = ({ isOpen, onClose }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="p-4 text-center text-slate-400">
+                    No overtime types found.
+                  </td>
+                </tr>
+              )}
               {filtered.map((ot) => (
                 <tr
                   key={ot.code}

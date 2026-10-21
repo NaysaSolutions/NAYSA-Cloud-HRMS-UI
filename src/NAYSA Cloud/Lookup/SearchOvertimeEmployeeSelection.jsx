@@ -1,17 +1,17 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
-import { useSwalValidationAlert, useSwalErrorAlertAPI } from "@/NAYSA Cloud/Global/behavior.jsx";
-
-const parseResult = (response, fallback = []) => {
-  try {
-    return JSON.parse(response?.data?.data?.[0]?.result || JSON.stringify(fallback));
-  } catch {
-    return fallback;
-  }
-};
+import {
+  useSwalValidationAlert as showValidationAlert,
+  useSwalErrorAlertAPI as showErrorAlert,
+} from "@/NAYSA Cloud/Global/behavior.jsx";
+import {
+  parseOvertimeReferences,
+  parseOvertimeSelectionResult,
+} from "@/NAYSA Cloud/Global/overtimeSelection.js";
 
 const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   const [loading, setLoading] = useState(false);
@@ -38,44 +38,48 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   // Load branches, payGroups, departments, and ref_ot (overtimes)
   useEffect(() => {
     if (!isOpen) return;
+    const controller = new AbortController();
     setSelectedEmpNos(new Set());
     setSelectedOtCodes(new Set());
     setEmployees([]);
     setDefaultOtHours("0.00");
     setOtSearch("");
+    setReferences({ branches: [], payGroups: [], departments: [], overtimes: [] });
 
     const fetchReferences = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get("/overtimeTransactions/selectionReferences");
-        const data = parseResult(response, {
-          branches: [],
-          payGroups: [],
-          departments: [],
-          overtimes: [],
+        const response = await apiClient.get("/overtimeTransactions/selectionReferences", {
+          signal: controller.signal,
         });
-        setReferences({
-          branches: data.branches || [],
-          payGroups: data.payGroups || [],
-          departments: data.departments || [],
-          overtimes: data.overtimes || [],
-        });
-        if (data.payGroups?.length) {
-          setFilters((prev) => ({ ...prev, groupCode: prev.groupCode || data.payGroups[0].value }));
-        }
+        if (controller.signal.aborted) return;
+        const data = parseOvertimeReferences(response);
+        setReferences(data);
+        setFilters((prev) => ({
+          ...prev,
+          groupCode: data.payGroups.some((group) => group.value === prev.groupCode)
+            ? prev.groupCode : data.payGroups[0]?.value || "",
+          branchCode: data.branches.some((branch) => branch.value === prev.branchCode)
+            ? prev.branchCode : "",
+          deptCode: data.departments.some((department) => department.value === prev.deptCode)
+            ? prev.deptCode : "",
+        }));
       } catch (error) {
-        useSwalErrorAlertAPI("Reference Load Error", error);
+        if (!controller.signal.aborted) {
+          showErrorAlert("Reference Load Error", error?.response?.data?.message || error.message);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchReferences();
+    return () => controller.abort();
   }, [isOpen]);
 
   const handleSearchEmployees = async () => {
     if (!filters.groupCode) {
-      return useSwalValidationAlert({
+      return showValidationAlert({
         title: "Payroll Group Required",
         message: "Please select a Payroll Group first.",
       });
@@ -92,11 +96,15 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
           payFrequency: payFrequency,
         },
       });
-      const list = parseResult(response, []);
-      setEmployees(Array.isArray(list) ? list : []);
+      const list = parseOvertimeSelectionResult(response);
+      if (!Array.isArray(list)) throw new Error("The overtime service returned an invalid employee list.");
+      setEmployees(list);
       setSelectedEmpNos(new Set());
     } catch (error) {
-      useSwalErrorAlertAPI("Employee Search Error", error);
+      setEmployees([]);
+      setSelectedEmpNos(new Set());
+      const validationMessage = Object.values(error?.response?.data?.errors || {}).flat()[0];
+      showErrorAlert("Employee Search Error", validationMessage || error?.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
@@ -149,14 +157,14 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
     const chosenOvertimes = references.overtimes.filter((ot) => selectedOtCodes.has(ot.code));
 
     if (!chosenEmployees.length) {
-      return useSwalValidationAlert({
+      return showValidationAlert({
         title: "Employee Required",
         message: "Please select at least one employee.",
       });
     }
 
     if (!chosenOvertimes.length) {
-      return useSwalValidationAlert({
+      return showValidationAlert({
         title: "Overtime Type Required",
         message: "Please select at least one Overtime Code from ref_ot.",
       });
@@ -197,6 +205,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             </label>
             <select
               value={filters.groupCode}
+              disabled={loading}
               onChange={(e) => setFilters((prev) => ({ ...prev, groupCode: e.target.value }))}
               className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
@@ -215,6 +224,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             </label>
             <select
               value={filters.branchCode}
+              disabled={loading}
               onChange={(e) => setFilters((prev) => ({ ...prev, branchCode: e.target.value }))}
               className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
@@ -233,6 +243,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             </label>
             <select
               value={filters.deptCode}
+              disabled={loading}
               onChange={(e) => setFilters((prev) => ({ ...prev, deptCode: e.target.value }))}
               className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
@@ -262,6 +273,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             <button
               type="button"
               onClick={handleSearchEmployees}
+              disabled={loading || !references.payGroups.some((group) => group.value === filters.groupCode)}
               className="flex h-8 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <FontAwesomeIcon icon={faMagnifyingGlass} />
@@ -300,7 +312,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                   {employees.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="p-4 text-center text-slate-400">
-                        Click "Load Employees" to view records.
+                        Click &quot;Load Employees&quot; to view records.
                       </td>
                     </tr>
                   ) : (
@@ -422,6 +434,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             <button
               type="button"
               onClick={handleConfirm}
+              disabled={loading || !selectedEmpNos.size || !selectedOtCodes.size}
               className="flex items-center gap-1.5 rounded bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <FontAwesomeIcon icon={faCheck} />
