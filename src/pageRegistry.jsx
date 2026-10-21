@@ -1,4 +1,4 @@
-import React, { lazy } from "react";
+import { lazy } from "react";
 
 // Maps DB componentKey -> lazy React component. Keep keys stable because the
 // backend stores them in menu-routes/menu-items.
@@ -39,19 +39,40 @@ export const pageRegistry = {
   RefRC: organizationReference("rc"),
   RefCompany: lazyPage(() => import("./NAYSA Cloud/Reference File/RefCompany.jsx")),
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
+  RefLeaveCredit: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLeaveCredit.jsx")),
+  GenerateLeaveCredits: lazyPage(() => import("./NAYSA Cloud/Leaves/GenerateLeaveCredits.jsx")),
+  EmployeeLeaveLedger: lazyPage(() => import("./NAYSA Cloud/Leaves/LeaveLedger.jsx")),
+  LeaveLedger: lazyPage(() => import("./NAYSA Cloud/Leaves/LeaveLedger.jsx")),
+  LeaveCreditBalance: lazyPage(() => import("./NAYSA Cloud/Leaves/LeaveCreditBalance.jsx")),
   RefArea: lazyPage(() => import("./NAYSA Cloud/Reference File/RefArea.jsx")),
-  BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
+  RefBank: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBank.jsx")),
   RefHoliday: lazyPage(() => import("./NAYSA Cloud/Reference File/RefHoliday.jsx")),
   RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
   RefLoan: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLoan.jsx")),
   RefPayrollPeriod: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPayrollPeriod.jsx")),
 
+  RefPayGroup: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPayGroup.jsx")),
+  RefPosition: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPOS.jsx")),
+  RefLeave: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLeave.jsx")),
+  RefOvertime: lazyPage(() => import("./NAYSA Cloud/Reference File/RefOvertime.jsx")),
+  RefEmployeeStatus: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeStatus.jsx")),
+  RefClient: lazyPage(() => import("./NAYSA Cloud/Reference File/RefClient.jsx")),
+  RefEmployeeGovInfo: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeGovInfo.jsx")),
+  
   RefGovtSSS: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
   RefGovtTAX: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefTaxTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefSSSTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
 
-  RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
+  //TRANSACTIONS
+  Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
+  LoanTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
+  Loans: lazyPage(() => import("./NAYSA Cloud/Transactions/LoanTransaction.jsx")),
+  LoanLedger: lazyPage(() => import("./NAYSA Cloud/Payroll/LoanLedger.jsx")),
+  LeaveTransaction: lazyPage(() => import("./NAYSA Cloud/Transactions/LeaveTransaction.jsx")),
+  BonusProcessing: lazyPage(() => import("./NAYSA Cloud/Payroll/BonusProcessing.jsx")),
+  TaxReconciliation: lazyPage(() => import("./NAYSA Cloud/Payroll/TaxReconciliation.jsx")),
+  BIRAlphalist: lazyPage(() => import("./NAYSA Cloud/Payroll/BIRAlphalist.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),

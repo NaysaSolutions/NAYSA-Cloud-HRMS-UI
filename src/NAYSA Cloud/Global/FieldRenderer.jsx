@@ -378,7 +378,8 @@ const FieldRenderer = ({
                 <ChevronDown className="h-4 w-4" strokeWidth={3} />
               </div>
 
-              <SelectContent className="rounded-xl border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+              {/* SelectContent is portalled to document.body. Keep it above modal overlays. */}
+              <SelectContent className="z-[100] rounded-xl border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                 {options.map((opt) => (
                   <SelectItem
                     key={String(opt.value)}

@@ -12,14 +12,19 @@ import {
 export const reftables = {
 
     // Reference Files
+    POS: "Position Codes",
+    Client: "Client Codes",
     Branch: "Branch Codes",
+    PayGroup: "Payroll Group",
     BankInfo: "Bank Information",
+    LeaveCredit: "Leave Credit Table",
     GovtSSS: "SSS Contribution Reference",
     GovtHDMF: "Pag-IBIG Contribution Table",
     GovtPH: "PhilHealth Contribution Table",
     GovtTAX: "Withholding Tax Table",
     Holiday: "Holiday Codes",
     Employee: "Employee Masterdata",
+    RefEmployeeGovInfo: "Employee Government Information",
     BankType: "Bank Type Codes",
     UserAccRight: "User Access Rights",
     Company: "Company ID",

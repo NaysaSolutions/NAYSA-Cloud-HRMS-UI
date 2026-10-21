@@ -23,6 +23,7 @@ import {
 } from "@/NAYSA Cloud/Global/behavior.jsx";
 
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable.jsx";
+import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 
 const getUserCode = (row = {}) =>
   row.userCode ?? row.USER_CODE ?? row.user_code ?? "";
@@ -146,25 +147,27 @@ const BranchAccessTab = forwardRef(
       );
     }, []);
 
-   const loadExistingAccess = useCallback(async () => {
-    if (selectedUsers.length === 0) return [];
+    const loadExistingAccess = useCallback(async () => {
+      if (selectedUsers.length === 0) return [];
 
-    const { data } = await apiClient.get(
-        "/getUserBranchAccess",
-        {
-            json_data: {
-                dt2: selectedUsers.map((userCode) => ({
-                    userCode,
-                })),
-            },
+      const payload = {
+        json_data: {
+          dt2: selectedUsers.map((userCode) => ({
+            userCode,
+          })),
         },
-        {
-            timeout: 60000,
-        }
-    );
+      };
 
-    return normalizeRows(data);
-}, [selectedUsers]);
+      const { data } = await apiClient.post(
+        "/getUserBranchAccess",
+        payload,
+        {
+          timeout: 60000,
+        }
+      );
+
+      return normalizeRows(data);
+    }, [selectedUsers]);
 
     const handleViewBranches = useCallback(async () => {
       if (selectedUsers.length === 0) {
@@ -249,11 +252,12 @@ const BranchAccessTab = forwardRef(
         setViewingBranches(true);
         setMobileStep("branches");
       } catch (error) {
-        console.error("Unable to load branch access:", error);
+        console.error("Unable to load branch access:", error?.response?.data || error);
 
         await useSwalErrorAlert(
           "Error",
           error?.response?.data?.message ||
+            error?.response?.data?.details ||
             "Unable to load branch access."
         );
       } finally {
@@ -299,7 +303,10 @@ const BranchAccessTab = forwardRef(
 
         const { data: response } = await apiClient.post(
           "/upsertUserBranchAccess",
-          payload
+          payload,
+          {
+            timeout: 60000,
+          }
         );
 
         const sqlRow =
@@ -729,6 +736,8 @@ const BranchAccessTab = forwardRef(
             {`${selectedBranches.length} branch(es) selected to apply to ${selectedUsers.length} user(s).`}
           </div>
         )}
+
+        {loadingBranches && <LoadingSpinner />}
       </div>
     );
   }
