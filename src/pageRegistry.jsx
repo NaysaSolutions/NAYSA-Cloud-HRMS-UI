@@ -4,6 +4,15 @@ import React, { lazy } from "react";
 // backend stores them in menu-routes/menu-items.
 const lazyPage = (loader) => lazy(loader);
 
+const RefOrganization = lazyPage(() =>
+  import("./NAYSA Cloud/Reference File/RefOrganization.jsx")
+);
+const organizationReference = (initialTab) => {
+  const ReferencePage = () => <RefOrganization initialTab={initialTab} />;
+  ReferencePage.displayName = `OrganizationReference_${initialTab}`;
+  return ReferencePage;
+};
+
 const UniversalReportModal = lazyPage(() =>
   import("./NAYSA Cloud/Printing/UniversalReportModal.jsx")
 );
@@ -22,12 +31,20 @@ export const pageRegistry = {
   AllTranHistory: lazyPage(() => import("./NAYSA Cloud/Lookup/SearchGlobalTranHistory.jsx")),
 
   // Global Reference
+  RefOrganization,
+  RefDepartment: organizationReference("department"),
+  RefGroup: organizationReference("group"),
+  RefType: organizationReference("type"),
+  Reftype: organizationReference("type"),
+  RefRC: organizationReference("rc"),
   RefCompany: lazyPage(() => import("./NAYSA Cloud/Reference File/RefCompany.jsx")),
   RefBranch: lazyPage(() => import("./NAYSA Cloud/Reference File/RefBranch.jsx")),
   RefArea: lazyPage(() => import("./NAYSA Cloud/Reference File/RefArea.jsx")),
   BankRef: lazyPage(() => import("./NAYSA Cloud/Reference File/BankRef.jsx")),
   RefHoliday: lazyPage(() => import("./NAYSA Cloud/Reference File/RefHoliday.jsx")),
   RefEmployee: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployee.jsx")),
+  RefLoan: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLoan.jsx")),
+  RefPayrollPeriod: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPayrollPeriod.jsx")),
 
   RefGovtSSS: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
   RefGovtTAX: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
