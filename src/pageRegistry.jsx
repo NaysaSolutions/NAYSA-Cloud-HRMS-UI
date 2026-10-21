@@ -73,6 +73,7 @@ export const pageRegistry = {
   BonusProcessing: lazyPage(() => import("./NAYSA Cloud/Payroll/BonusProcessing.jsx")),
   TaxReconciliation: lazyPage(() => import("./NAYSA Cloud/Payroll/TaxReconciliation.jsx")),
   BIRAlphalist: lazyPage(() => import("./NAYSA Cloud/Payroll/BIRAlphalist.jsx")),
+  Overtime: lazyPage(() => import("./NAYSA Cloud/Transactions/Overtime.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
