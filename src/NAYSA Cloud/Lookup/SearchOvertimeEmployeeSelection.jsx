@@ -29,6 +29,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
     employeeNo: "",
   });
 
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [otSearch, setOtSearch] = useState("");
   const [defaultOtHours, setDefaultOtHours] = useState("0.00");
   const [employees, setEmployees] = useState([]);
@@ -43,6 +44,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
     setSelectedOtCodes(new Set());
     setEmployees([]);
     setDefaultOtHours("0.00");
+    setEmployeeSearch("");
     setOtSearch("");
     setReferences({ branches: [], payGroups: [], departments: [], overtimes: [] });
 
@@ -58,7 +60,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
         setFilters((prev) => ({
           ...prev,
           groupCode: data.payGroups.some((group) => group.value === prev.groupCode)
-            ? prev.groupCode : data.payGroups[0]?.value || "",
+            ? prev.groupCode : "",
           branchCode: data.branches.some((branch) => branch.value === prev.branchCode)
             ? prev.branchCode : "",
           deptCode: data.departments.some((department) => department.value === prev.deptCode)
@@ -78,24 +80,18 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   }, [isOpen]);
 
   const handleSearchEmployees = async () => {
-    if (!filters.groupCode) {
-      return showValidationAlert({
-        title: "Payroll Group Required",
-        message: "Please select a Payroll Group first.",
-      });
-    }
-
     setLoading(true);
     try {
       const response = await apiClient.post("/overtimeTransactions/selectionEmployees", {
         jsonData: {
-          groupCode: filters.groupCode,
+          groupCode: filters.groupCode || null,
           branchCode: filters.branchCode || null,
           deptCode: filters.deptCode || null,
           employeeNo: filters.employeeNo || null,
           payFrequency: payFrequency,
         },
       });
+
       const list = parseOvertimeSelectionResult(response);
       if (!Array.isArray(list)) throw new Error("The overtime service returned an invalid employee list.");
       setEmployees(list);
@@ -109,6 +105,20 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
       setLoading(false);
     }
   };
+
+  const filteredEmployees = useMemo(() => {
+    const keyword = employeeSearch.trim().toLowerCase();
+    if (!keyword) return employees;
+    return employees.filter(
+      (employee) =>
+        String(employee.empNo ?? "").toLowerCase().includes(keyword) ||
+        String(employee.empName ?? "").toLowerCase().includes(keyword)
+    );
+  }, [employees, employeeSearch]);
+
+  const allVisibleEmployeesSelected =
+    filteredEmployees.length > 0 &&
+    filteredEmployees.every((employee) => selectedEmpNos.has(employee.empNo));
 
   const filteredOvertimes = useMemo(() => {
     const keyword = otSearch.trim().toLowerCase();
@@ -129,11 +139,15 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   };
 
   const toggleAllEmployees = () => {
-    if (selectedEmpNos.size === employees.length && employees.length > 0) {
-      setSelectedEmpNos(new Set());
-    } else {
-      setSelectedEmpNos(new Set(employees.map((e) => e.empNo)));
-    }
+    setSelectedEmpNos((prev) => {
+      const next = new Set(prev);
+      const allSelected = filteredEmployees.every((employee) => prev.has(employee.empNo));
+      filteredEmployees.forEach((employee) => {
+        if (allSelected) next.delete(employee.empNo);
+        else next.add(employee.empNo);
+      });
+      return next;
+    });
   };
 
   const toggleOvertime = (code) => {
@@ -201,7 +215,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
         <div className="grid grid-cols-1 gap-3 border-b bg-slate-50 p-4 md:grid-cols-5 dark:border-slate-700 dark:bg-slate-800/50">
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Payroll Group <span className="text-red-500">*</span>
+              Payroll Group
             </label>
             <select
               value={filters.groupCode}
@@ -209,7 +223,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
               onChange={(e) => setFilters((prev) => ({ ...prev, groupCode: e.target.value }))}
               className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
-              <option value="">Select Group</option>
+              <option value="">All Pay Groups</option>
               {references.payGroups.map((pg) => (
                 <option key={pg.value} value={pg.value}>
                   {pg.label}
@@ -273,8 +287,8 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             <button
               type="button"
               onClick={handleSearchEmployees}
-              disabled={loading || !references.payGroups.some((group) => group.value === filters.groupCode)}
-              className="flex h-8 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700"
+              disabled={loading}
+              className="flex h-8 w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
             >
               <FontAwesomeIcon icon={faMagnifyingGlass} />
               Load Employees
@@ -286,10 +300,18 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-2">
           {/* Left: Employees Table */}
           <div className="flex flex-col overflow-hidden rounded border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between bg-slate-100 px-3 py-2 dark:bg-slate-800">
+            <div className="flex items-center justify-between gap-2 bg-slate-100 px-3 py-2 dark:bg-slate-800">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                 Employees ({selectedEmpNos.size} selected)
               </span>
+              <input
+                type="text"
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
+                placeholder="Filter Emp No. / Name..."
+                aria-label="Filter employees by number or name"
+                className="h-6 w-48 rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+              />
             </div>
             <div className="flex-1 overflow-y-auto max-h-80">
               <table className="w-full border-collapse text-left text-xs">
@@ -298,8 +320,10 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                     <th className="w-8 p-2 text-center">
                       <input
                         type="checkbox"
-                        checked={employees.length > 0 && selectedEmpNos.size === employees.length}
+                        checked={allVisibleEmployeesSelected}
                         onChange={toggleAllEmployees}
+                        disabled={filteredEmployees.length === 0}
+                        aria-label="Select all filtered employees"
                       />
                     </th>
                     <th className="p-2">Emp No.</th>
@@ -309,14 +333,16 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {employees.length === 0 ? (
+                  {filteredEmployees.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="p-4 text-center text-slate-400">
-                        Click &quot;Load Employees&quot; to view records.
+                        {employees.length === 0
+                          ? 'Click "Load Employees" to view records.'
+                          : "No matching employees found."}
                       </td>
                     </tr>
                   ) : (
-                    employees.map((emp) => (
+                    filteredEmployees.map((emp) => (
                       <tr
                         key={emp.empNo}
                         onClick={() => toggleEmployee(emp.empNo)}

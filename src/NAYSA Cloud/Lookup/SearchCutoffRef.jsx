@@ -1,259 +1,229 @@
-/* eslint-disable react/prop-types, react/no-unknown-property */
-import { useState, useMemo, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+/* eslint-disable react/prop-types */
+import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faTimes,
-  faSpinner,
-  faSyncAlt,
-  faSort,
-  faSearch,
-  faEraser,
-  faChevronLeft,
-  faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faSpinner, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
+import { formatDateToMMDDYYYY } from "@/NAYSA Cloud/Global/DateFormatInput.jsx";
+import { useSwalErrorAlertAPI as showErrorAlert } from "@/NAYSA Cloud/Global/behavior.jsx";
 
-// Debounce hook for smooth filtering
+const columns = [
+  { key: "code", label: "Cut-Off Code", width: "w-[16%]" },
+  { key: "description", label: "Description", width: "w-[30%]" },
+  { key: "cutoffFreq", label: "Freq", width: "w-[14%]" },
+  { key: "cutoffStartDate", label: "Start Date", width: "w-[20%]" },
+  { key: "cutoffEndDate", label: "End Date", width: "w-[20%]" },
+];
+
+const emptyFilters = Object.fromEntries(columns.map(({ key }) => [key, ""]));
+
 function useDebounce(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
+    const timeout = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timeout);
   }, [value, delay]);
   return debouncedValue;
 }
 
-const CutoffLookupModal = ({
-  isOpen,
-  onClose,
-  source,
-  customParam = "",
-  title = "Search Cut Off",
-  withPagination = false, // defaults to false to maintain previous behavior unless requested
-}) => {
-  const [filters, setFilters] = useState({
-    cutoffCode: "",
-    cutoffName: "",
-  });
+const toDisplayDate = (value) => {
+  if (!value) return "";
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(String(value))
+    ? String(value)
+    : formatDateToMMDDYYYY(value);
+};
 
-  const [sortConfig, setSortConfig] = useState({
-    key: "",
-    direction: "asc",
-  });
+const normalizeFrequency = (freq) => {
+  const val = String(freq || "").trim().toUpperCase();
+  if (val.startsWith("S")) return "S";
+  if (val.startsWith("M")) return "M";
+  if (val.startsWith("D") || val.startsWith("W")) return "D";
+  return val;
+};
 
-  const [currentPage, setCurrentPage] = useState(1);
-  
-  // Set pageSize to a very large number if pagination is disabled
-  const pageSize = withPagination ? 100 : 999999; 
+const parseCutoffsResponse = (response) => {
+  try {
+    const rawData = response?.data?.data ?? response?.data ?? [];
+    if (Array.isArray(rawData) && rawData[0]?.result) {
+      const parsed = JSON.parse(rawData[0].result);
+      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed?.cutoffs)) return parsed.cutoffs;
+    }
+    if (typeof rawData === "string") {
+      return JSON.parse(rawData);
+    }
+    if (Array.isArray(rawData)) return rawData;
+    return [];
+  } catch {
+    return [];
+  }
+};
 
-  const hasActiveFilters = Object.values(filters).some((val) => val !== "");
-
-  const resetFilters = () =>
-    setFilters({
-      cutoffCode: "",
-      cutoffName: "",
-    });
-
+const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
+  const [loading, setLoading] = useState(false);
+  const [cutoffs, setCutoffs] = useState([]);
+  const [filters, setFilters] = useState(emptyFilters);
   const debouncedFilters = useDebounce(filters, 300);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedFilters]);
+    if (!isOpen) return;
+    const controller = new AbortController();
+    setFilters(emptyFilters);
+    setCutoffs([]);
 
-  // Fetching data using TanStack Query
-  const {
-    data: cutoffs = [],
-    isLoading,
-    isFetching,
-    refetch,
-  } = useQuery({
-    queryKey: ["lookupCutOff", customParam],
-    queryFn: async () => {
-      const { data: result } = await apiClient.get("/lookupCutOff", {
-        params: {
-            // CutoffController expects a string directly which is formatted in the sproc
-            PARAMS: customParam || "All",
-        },
-      });
+    const loadCutoffs = async () => {
+      setLoading(true);
+      try {
+        let items = [];
+        try {
+          const response = await apiClient.get("/lookupCutOff", {
+            signal: controller.signal,
+            params: payFrequency
+              ? { json_data: JSON.stringify({ cutoffFreq: payFrequency }) }
+              : {},
+          });
+          items = parseCutoffsResponse(response);
+        } catch {
+          const fallback = await apiClient.get(
+            "/overtimeTransactions/selectionReferences",
+            { signal: controller.signal },
+          );
+          items = parseCutoffsResponse(fallback);
+        }
 
-      const rawData = result?.data?.[0]?.result || "[]";
-      const rows = Array.isArray(rawData) ? rawData : JSON.parse(rawData);
-      return rows.map((row) => ({
-        ...row,
-        cutoffCode: row.cutoffCode || row.code || "",
-        cutoffName: row.cutoffName || row.description || "",
-        cutoffFrequency: row.cutoffFrequency || row.cutoffFreq || "",
-      }));
-    },
-    enabled: isOpen,
-    staleTime: 1000 * 60 * 5,
-    placeholderData: keepPreviousData,
-  });
+        if (controller.signal.aborted) return;
 
-  // Client-side Filter and Sort Logic
-  const filteredAndSorted = useMemo(() => {
-    if (!cutoffs.length) return [];
+        const normalized = items.map((item) => ({
+          code: String(item.code || item.cutoffCode || item.CUTOFF_CODE || "").trim(),
+          description: String(
+            item.description || item.cutoffName || item.CUTOFF_NAME || "",
+          ).trim(),
+          cutoffFreq: normalizeFrequency(
+            item.cutoffFreq || item.cutoffFrequency || item.CUTOFF_FREQ,
+          ),
+          cutoffStartDate: toDisplayDate(
+            item.cutoffStartDate || item.startDate || item.CUTOFF_STARTDATE,
+          ),
+          cutoffEndDate: toDisplayDate(
+            item.cutoffEndDate || item.endDate || item.CUTOFF_ENDDATE,
+          ),
+          cutoffDate: toDisplayDate(item.cutoffDate || item.CUTOFF_DATE),
+          year: item.year || item.YEAR || "",
+          cutoffGrp: item.cutoffGrp || item.CUTOFF_GRP || "",
+          status: item.status || item.STATUS || "ACTIVE",
+        }));
 
-    let result = cutoffs.filter((item) => {
-      return (
-        (item.cutoffCode || "")
-          .toLowerCase()
-          .includes(debouncedFilters.cutoffCode.toLowerCase()) &&
-        (item.cutoffName || "")
-          .toLowerCase()
-          .includes(debouncedFilters.cutoffName.toLowerCase())
-      );
-    });
-
-    if (sortConfig.key) {
-      result.sort((a, b) => {
-        const aVal = String(a[sortConfig.key] ?? "");
-        const bVal = String(b[sortConfig.key] ?? "");
-        return sortConfig.direction === "asc"
-          ? aVal.localeCompare(bVal, undefined, { numeric: true })
-          : bVal.localeCompare(aVal, undefined, { numeric: true });
-      });
-    }
-
-    return result;
-  }, [cutoffs, debouncedFilters, sortConfig]);
-
-  // Pagination Logic
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredAndSorted.slice(startIndex, startIndex + pageSize);
-  }, [filteredAndSorted, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredAndSorted.length / pageSize) || 1;
-
-  const handleSort = (key) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  const handleApply = (cutoff) => {
-    const cutoffData = {
-        cutoffCode: cutoff.cutoffCode,
-        cutoffName: cutoff.cutoffName,
-        cutoffFrequency: cutoff.cutoffFrequency,
+        setCutoffs(normalized.filter((c) => c.code));
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          showErrorAlert(
+            "Payroll Cut-Off Load Error",
+            error?.response?.data?.message || error.message,
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     };
-    onClose(cutoffData, source);
-  };
+
+    loadCutoffs();
+    return () => controller.abort();
+  }, [isOpen, payFrequency]);
+
+  const filtered = useMemo(() => {
+    const targetFreq = normalizeFrequency(payFrequency);
+    const freqFiltered = targetFreq
+      ? cutoffs.filter((c) => !c.cutoffFreq || c.cutoffFreq === targetFreq)
+      : cutoffs;
+
+    const baseList = freqFiltered.length > 0 ? freqFiltered : cutoffs;
+    return baseList.filter((cutoff) =>
+      columns.every(({ key }) =>
+        String(cutoff[key] ?? "").toLowerCase().includes(debouncedFilters[key].trim().toLowerCase()),
+      ),
+    );
+  }, [cutoffs, payFrequency, debouncedFilters]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col relative overflow-hidden transform animate-scale-in border border-slate-200">
-        
-        {/* Header Section */}
-        <div className="flex items-center justify-between bg-slate-100 border-b border-slate-200">
-          <div className="flex items-center gap-2 pl-3">
-            <h2 className="global-lookup-headertext-ui">{title}</h2>
-            {isFetching && (
-                <div className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            {hasActiveFilters && (
-              <button
-                onClick={resetFilters}
-                className="px-2 py-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-all flex items-center gap-1.5"
-              >
-                <FontAwesomeIcon icon={faEraser} />
-                CLEAR
-              </button>
-            )}
-            
-            {isFetching && (
-              <span className="text-[9px] text-blue-500 animate-pulse font-bold flex items-center gap-1 uppercase mt-0.5">
-                <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
-                Syncing...
-              </span>
-            )}
-
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cutoff-lookup-title"
+        className="relative flex max-h-[75vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+      >
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b bg-slate-100 p-2 dark:border-slate-700 dark:bg-slate-800">
+          <h2 id="cutoff-lookup-title" className="text-md pl-2 font-bold text-blue-800 dark:text-white">
+            Select Payroll Cut-Off
+          </h2>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => refetch()}
-              className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
-              title="Refresh Data"
-            >
-              <FontAwesomeIcon icon={faSyncAlt} size="sm" spin={isFetching} />
-            </button>
-
-            <button
-              onClick={() => onClose(null, source)}
-              className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+              type="button"
+              onClick={() => onClose(null)}
+              className="p-2 text-slate-400 hover:text-red-600"
+              aria-label="Close payroll cut-off lookup"
             >
               <FontAwesomeIcon icon={faTimes} size="lg" />
             </button>
           </div>
         </div>
 
-        {/* Table Body */}
-        <div className="flex-grow overflow-auto custom-scrollbar bg-white">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+        {/* Table */}
+        <div className="min-h-0 flex-grow overflow-auto bg-white dark:bg-slate-900">
+          {loading ? (
+            <div role="status" aria-label="Loading payroll cut-offs" className="flex h-64 flex-col items-center justify-center text-slate-400">
               <FontAwesomeIcon icon={faSpinner} spin size="2x" className="mb-4 text-blue-500" />
-              <p className="text-sm font-medium">Loading...</p>
             </div>
           ) : (
-            <table className="min-w-full border-separate border-spacing-0">
-              <thead className="sticky top-0 z-10 bg-slate-200">
+            <table className="w-full min-w-[800px] table-fixed border-separate border-spacing-0">
+              <colgroup>
+                {columns.map((column) => (
+                  <col key={column.key} className={column.width} />
+                ))}
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-slate-200 dark:bg-slate-700">
                 <tr>
-                  {[
-                    { label: "Cut Off Code", key: "cutoffCode" },
-                    { label: "Description", key: "cutoffName" },
-                  ].map((col) => (
-                    <th key={col.key} className="global-lookup-th-ui">
-                      <div
-                        onClick={() => handleSort(col.key)}
-                        className="flex items-center gap-3 cursor-pointer group mb-1"
-                      >
-                        <span className="global-lookup-th-text-ui">{col.label}</span>
-                        <FontAwesomeIcon
-                          icon={faSort}
-                          className={`mb-2 text-[10px] ${sortConfig.key === col.key ? "text-gray-600" : "opacity-30 group-hover:opacity-100"}`}
-                        />
+                  {columns.map((column) => (
+                    <th key={column.key} scope="col" className="border-b border-slate-200 px-4 py-2 text-left dark:border-slate-700">
+                      <div className="mb-1.5 flex items-center gap-1">
+                        <label htmlFor={`cutoff-filter-${column.key}`} className="mb-1 block text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                          {column.label}
+                        </label>
                       </div>
                       <div className="relative">
                         <input
+                          id={`cutoff-filter-${column.key}`}
                           type="text"
-                          value={filters[col.key]}
-                          onChange={(e) => setFilters(prev => ({ ...prev, [col.key]: e.target.value }))}
+                          value={filters[column.key]}
+                          onChange={(event) => setFilters((current) => ({ ...current, [column.key]: event.target.value }))}
                           placeholder="Filter..."
-                          className="global-lookup-filter-text-ui"
+                          className="w-full rounded border border-slate-200 py-1.5 pl-7 pr-2 text-xs font-normal dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         />
-                        <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" />
+                        <FontAwesomeIcon icon={faSearch} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-300" />
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {paginatedData.length > 0 ? (
-                  paginatedData.map((cutoff, index) => (
-                    <tr
-                      key={cutoff.cutoffCode || index}
-                      onClick={() => handleApply(cutoff)}
-                      className="group hover:bg-blue-50 cursor-pointer transition-colors"
-                    >
-                      <td className="global-lookup-td-ui w-[180px] font-bold">{cutoff.cutoffCode}</td>
-                      <td className="global-lookup-td-ui w-[300px]">{cutoff.cutoffName}</td>
-                    </tr>
-                  ))
-                ) : (
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filtered.length > 0 ? filtered.map((cutoff) => (
+                  <tr
+                    key={cutoff.code}
+                    onClick={() => onClose(cutoff)}
+                    className="group cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-800"
+                  >
+                    <td className="break-words px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300">{cutoff.code}</td>
+                    <td className="break-words px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.description}</td>
+                    <td className="px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffFreq}</td>
+                    <td className="whitespace-nowrap px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffStartDate}</td>
+                    <td className="whitespace-nowrap px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffEndDate}</td>
+                  </tr>
+                )) : (
                   <tr>
-                    <td colSpan="2" className="px-4 py-20 text-center text-slate-400 italic text-sm">
-                      No matching records found.
+                    <td colSpan={columns.length} className="px-4 py-8 text-center text-xs text-slate-400">
+                      No payroll cut-off records found.
                     </td>
                   </tr>
                 )}
@@ -261,52 +231,9 @@ const CutoffLookupModal = ({
             </table>
           )}
         </div>
-
-        {/* Footer Section */}
-        <div className="global-lookup-footer-records-div-ui">
-          <div className="flex flex-col">
-            <span className="global-lookup-footer-records-text-ui">
-              Total Records: {filteredAndSorted.length}
-            </span>
-          </div>
-
-          {/* Only show pagination controls if withPagination is true AND there's more than 1 page */}
-          {withPagination && totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40"
-              >
-                <FontAwesomeIcon icon={faChevronLeft} className="text-[10px]" />
-              </button>
-              <span className="text-[11px] font-semibold text-slate-600">
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40"
-              >
-                <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
-              </button>
-            </div>
-          )}
-        </div>
       </div>
-
-      <style jsx="true">{`
-        .animate-fade-in { animation: fadeIn 0.15s ease-out forwards; }
-        .animate-scale-in { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      `}</style>
     </div>
   );
 };
 
-export default CutoffLookupModal;
+export default SearchCutoffRef;
