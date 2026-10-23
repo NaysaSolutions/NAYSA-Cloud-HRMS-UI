@@ -48,6 +48,7 @@
     useSwalValidationAlert,
   } from "@/NAYSA Cloud/Global/behavior.jsx";
 
+  import RefEmployeeGovParam from "./RefEmployeeGovParam.jsx";
   const DOC_TYPE = "RefEmployeeGovInfo";
 
   const BANK_COMP_OPTIONS = [
@@ -55,7 +56,7 @@
     { value: "P", label: "Percentage" },
   ];
 
-  const INITIAL_FORM = {
+  const INFO_FORM = {
       empNo: "",
       empName: "",
       branchCode: "",
@@ -85,7 +86,7 @@
       bank3: ""
   };
 
-  const INITIAL_REG = {
+  const INFO_REG = {
       registeredBy: "",
       registeredDate: "",
       updatedBy: "",
@@ -101,8 +102,8 @@
       const pdfLink = reftablesPDFGuide[DOC_TYPE];
       const videoLink = reftablesVideoGuide[DOC_TYPE];
 
-      const [formData, setFormData] = useState(INITIAL_FORM);
-      const [registrationInfo, setRegistrationInfo] = useState(INITIAL_REG);
+      const [formData, setFormData] = useState(INFO_FORM);
+      const [registrationInfo, setRegistrationInfo] = useState(INFO_REG);
       
       const [isEditing, setIsEditing] = useState(false); //false to disabled upon expanding without selecting a employee
       const [isFieldsExpanded, setIsFieldsExpanded] = useState(false); // Set to true to expand the form fields section
@@ -123,8 +124,8 @@
       const userCode = user?.USER_CODE || "ADMIN";
       
       // tabs
-      const [mainActiveTab, setMainActiveTab] = useState("empHeader"); //header tab
-      const [subActiveTab, setSubActiveTab] = useState("empTable"); //sub tab
+      const [infoHeaderTab, setInfoHeaderTab] = useState("infoHeader"); //header tab
+      const [infoSubTab, setInfoSubTab] = useState("infoSub"); //sub tab
 
       const updateForm = (updates) => setFormData((prev) => ({ ...prev, ...updates }));
 
@@ -183,7 +184,7 @@
 
           setSelectedEmployeeInfo(row.empNo ?? null);
           setFormData({
-              ...INITIAL_FORM,
+              ...INFO_FORM,
               empNo: row.empNo ?? "",
               empName: row.empName ?? "",
               branchCode: row.branchCode ?? "",
@@ -223,17 +224,17 @@
           setIsEditing(true);
           setIsFieldsExpanded(true);
       
-          setMainActiveTab("empHeader");
-          setSubActiveTab("empInfo");
+          setInfoHeaderTab("infoHeader");
+          setInfoSubTab("empForm");
       };
 
       const resetForm = () => {
-          setFormData({ ...INITIAL_FORM });
-          setRegistrationInfo(INITIAL_REG);
+          setFormData({ ...INFO_FORM });
+          setRegistrationInfo(INFO_REG);
           setSelectedEmployeeInfo(null);
           setIsEditing(false);
-          setMainActiveTab("empHeader");
-          setSubActiveTab("empInfo");
+          setInfoHeaderTab("infoHeader");
+          setInfoSubTab("empForm");
       };
 
       const handleSave = () => {
@@ -294,6 +295,42 @@
               {row.empName}
             </span>
           ),
+        },
+        {
+          key: "branchCode",
+          label: "BRANCH NAME",
+          sortable: true,
+          width: 150,
+          requiredVisible: true,
+          render: (row) => (
+          <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {row.branchCode}
+          </span>
+          ),
+        },
+        {
+          key: "groupCode",
+          label: "GROUP CODE",
+          sortable: true,
+          width: 150,
+          requiredVisible: true,
+          render: (row) => (
+          <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {row.groupCode}
+          </span>
+          ),
+        },
+        {
+            key: "deptCode",
+            label: "DEPARTMENT",
+            sortable: true,
+            width: 150,
+            requiredVisible: true,
+            render: (row) => (
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {row.deptCode}
+            </span>
+            ),
         },
         { key: "tin", label: "TIN", sortable: true, width: 150, requiredVisibile: true },
         { key: "sssNo", label: "SSS NO.", sortable: true, width: 140, requiredVisibile: true },
@@ -376,13 +413,10 @@
 
                   <button
                     type="button"
-                    aria-selected={mainActiveTab === "empHeader"}
-                    onClick={() => {
-                      setMainActiveTab("empHeader");
-                      setSubActiveTab("empTable");
-                    }}
+                    aria-selected={infoHeaderTab === "infoHeader"}
+                    onClick={() => setInfoHeaderTab("infoHeader")}
                     className={`shrink-0 whitespace-nowrap rounded-t-lg border-b-2 px-3 py-1 text-[12px] font-semibold transition-colors sm:px-5 sm:py-1.5 sm:text-[15px] ${
-                      mainActiveTab === "empHeader"
+                      infoHeaderTab === "infoHeader"
                         ? "border-blue-700 bg-blue-50 text-blue-700"
                         : "border-transparent text-slate-500 hover:bg-blue-50/60 hover:text-blue-700"
                     }`}
@@ -392,17 +426,16 @@
 
                   <button
                     type="button"
-                    aria-selected={mainActiveTab === "empTable"}
-                    onClick={() => setMainActiveTab("empTable")}
+                    aria-selected={infoHeaderTab === "paramHeader"}
+                    onClick={() => setInfoHeaderTab("paramHeader")}
                     className={`shrink-0 whitespace-nowrap rounded-t-lg border-b-2 px-3 py-1 text-[12px] font-semibold transition-colors sm:px-5 sm:py-1.5 sm:text-[15px] ${
-                      mainActiveTab === "empTable"
+                      infoHeaderTab === "paramHeader"
                         ? "border-blue-700 bg-blue-50 text-blue-700"
                         : "border-transparent text-slate-500 hover:bg-blue-50/60 hover:text-blue-700"
                     }`}
                   >
                     Employee Parameters
                   </button>
-
                 </div>
               </div>
             </div>
@@ -463,7 +496,7 @@
                       >
                         <FontAwesomeIcon
                           icon={faVideo}
-                          className="mr-2 text-blue-500"z
+                          className="mr-2 text-blue-500"
                         />{" "}
                         Video Guide
                       </button>
@@ -475,19 +508,20 @@
           </div>
         </div>
 
-        
+        {/* ~~~~~~~~~~~~~~~~~~~ */}
         {/* Employee ID Numbers */}
-        {mainActiveTab === "empHeader" && (
+        {/* ~~~~~~~~~~~~~~~~~~~ */}
+        {infoHeaderTab === "infoHeader" && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div role="tablist" aria-label="Employee ID views" className="flex w-full items-center gap-1 rounded-lg bg-slate-100 p-1 sm:w-auto dark:bg-slate-700">
               
               <button
                 type="button"
                 role="tab"
-                aria-selected={subActiveTab === "empTable"}
-                onClick={() => setSubActiveTab("empTable")}
+                aria-selected={infoSubTab === "infoSub"}
+                onClick={() => setInfoSubTab("infoSub")}
                 className={`inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md px-3 text-xs font-medium transition-colors sm:flex-none sm:px-4 ${
-                  subActiveTab === "empTable"
+                  infoSubTab === "infoSub"
                     ? "bg-sky-700 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                 }`}
@@ -499,10 +533,10 @@
               <button
                 type="button"
                 role="tab"
-                aria-selected={subActiveTab === "empInfo"}
-                onClick={() => setSubActiveTab("empInfo")}
+                aria-selected={infoSubTab === "empForm"}
+                onClick={() => setInfoSubTab("empForm")}
                 className={`inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md px-3 text-xs font-semibold transition-colors sm:flex-none sm:px-4 ${
-                  subActiveTab === "empInfo"
+                  infoSubTab === "empForm"
                     ? "bg-sky-700 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                 }`}
@@ -513,7 +547,7 @@
             </div>
           </div>
         )}
-        {subActiveTab === "empInfo" && mainActiveTab === "empHeader" && (
+        {infoSubTab === "empForm" && infoHeaderTab === "infoHeader" && (
           <div className="mt-3 grid grid-cols-1 gap-3">
           {/* LEFT: Form */}
           <div
@@ -609,15 +643,6 @@
                 />
                 <FieldRenderer
                   label="Group Code"
-                  type="text"
-                  value={formData.groupCode}
-                  disabled={!isEditing || (isEditing && !!selectedEmployeeInfo)}
-                  onChange={(v) =>
-                    updateForm({ groupCode: (v || "").toUpperCase() })
-                  }
-                />
-                <FieldRenderer
-                  label="Payroll Group"
                   type="text"
                   value={formData.groupCode}
                   disabled={!isEditing || (isEditing && !!selectedEmployeeInfo)}
@@ -880,10 +905,13 @@
         </div>
         )}
 
+        {/* Display the Parameters Tab */}
+        {infoHeaderTab === "paramHeader" && <RefEmployeeGovParam />}
 
-
-        {/*  */}
-        {(mainActiveTab === "empTable" || (mainActiveTab === "empHeader" && subActiveTab === "empTable")) && (
+        {/* ~~~~~~~~~~~~~~~~~~~ */}
+        {/* Employee ID Numbers Table */}
+        {/* ~~~~~~~~~~~~~~~~~~~ */}
+        {infoHeaderTab === "infoHeader" && infoSubTab === "infoSub" && (
           <div className="global-tran-table-main-div-ui mt-4">
             <SearchGlobalReferenceTable
               docType={DOC_TYPE}
@@ -899,10 +927,8 @@
             />
           </div>
         )}
-        
-
       </div>
   )
-  }
+}
 
   export default RefEmployeeGovInfo;
