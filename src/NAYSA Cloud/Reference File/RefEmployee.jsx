@@ -10,6 +10,15 @@ import {
 import ButtonBar from "@/NAYSA Cloud/Global/ButtonBar.jsx";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable";
+import AreaLookupModal from "@/NAYSA Cloud/Lookup/SearchRefArea";
+import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchRefBranch";
+import BankLookupModal from "@/NAYSA Cloud/Lookup/SearchRefBank";
+import ClientLookupModal from "@/NAYSA Cloud/Lookup/SearchRefClient";
+import DepartmentLookupModal from "@/NAYSA Cloud/Lookup/SearchRefDepartment";
+import EmployeeStatusLookupModal from "@/NAYSA Cloud/Lookup/SearchRefEmpStatus";
+import PayGroupLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayGroup";
+import PositionLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPosition";
+import ShiftLookupModal from "@/NAYSA Cloud/Lookup/SearchRefShift";
 import RegistrationInfo from "@/NAYSA Cloud/Global/RegistrationInfo.jsx";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import {
@@ -77,6 +86,31 @@ const mapDropdownOptions = (rows = [], fallback = []) => {
     label: row.DROPDOWN_NAME ?? row.DROPDOWN_DESC ?? row.dropdownName ?? row.dropdownDesc ?? row.label ?? row.DROPDOWN_CODE ?? row.dropdownCode ?? "",
   })).filter((option) => option.value !== "");
   return mapped.length ? mapped : fallback;
+};
+
+const fetchReferenceOptions = async (endpoint, codeKey, nameKey, params) => {
+  const { data } = await apiClient.get(endpoint, params ? { params } : undefined);
+  const raw = data?.data?.[0]?.result || data?.[0]?.result || data?.result || [];
+  let rows = raw;
+  if (typeof raw === "string") {
+    try { rows = JSON.parse(raw); } catch { rows = []; }
+  }
+  const readValue = (row, key, fallbackKeys = []) => {
+    const normalizedKey = String(key).replace(/([A-Z])/g, "_$1").toUpperCase();
+    const candidates = [key, normalizedKey, key.toUpperCase(), ...fallbackKeys];
+    const matchingKey = Object.keys(row || {}).find((rowKey) => candidates.includes(rowKey) || rowKey.toUpperCase() === normalizedKey);
+    return matchingKey ? row[matchingKey] : "";
+  };
+
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      value: readValue(row, codeKey, ["code", "CODE"]),
+      label: readValue(row, nameKey, [
+        "name", "NAME", "description", "DESCRIPTION", "desc", "DESC", "label", "LABEL",
+        "branchDesc", "BRANCH_DESC", "branchDescription", "BRANCH_DESCRIPTION",
+      ]),
+    }))
+    .filter((option) => option.value !== "");
 };
 
 const isYesValue = (value) => ["Y", "YES", "1", "TRUE"].includes(String(value ?? "").trim().toUpperCase());
@@ -315,9 +349,7 @@ const DetailGrid = ({ title, rows, setRows, fields, autoAge }) => {
 /* ------------------------------------------------------------------ */
 
 const EMPLOYMENT_LEFT = [
-  ["Company", "compCode"], ["Branch", "branchCode"], ["Client", "clientCode"], ["Pay Group", "payGroup"],
-  ["Department", "deptCode"], ["Position", "posCode"], ["Employment Status", "statCode"],
-  ["Salary Grade", "sgCode"], ["Level", "level"],
+  ["Company", "compCode"], ["Salary Grade", "sgCode"], ["Level", "level"],
 ];
 const EMPLOYMENT_DATES = [
   ["Date Hired", "dateHired", { date: true }], ["Date Regularized", "dateRegularized", { date: true }],
@@ -380,6 +412,16 @@ export default function RefEmployee() {
   const [selected, setSelected] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [showAreaModal, setShowAreaModal] = useState(false);
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false);
+  const [showEmployeeStatusModal, setShowEmployeeStatusModal] = useState(false);
+  const [showPayGroupModal, setShowPayGroupModal] = useState(false);
+  const [showPositionModal, setShowPositionModal] = useState(false);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [lookupNames, setLookupNames] = useState({});
 
   const set = useCallback((k, v) => { setEmployee((p) => ({ ...p, [k]: v })); setDirty(true); }, []);
   const setDetail = useCallback((k, v) => { setDetails((p) => ({ ...p, [k]: v })); setDirty(true); }, []);
@@ -387,7 +429,20 @@ export default function RefEmployee() {
   const reset = useCallback(() => {
     setEmployee(blankEmployee); setDetails(emptyDetails);
     setSelected(null); setTab(TABS[0].id); setDirty(false); setShowErrors(false);
+    setLookupNames({});
   }, []);
+
+  const chooseLookup = useCallback((codeKey, nameKey, row) => {
+    const code = row?.code ?? row?.[codeKey] ?? "";
+    const name = row?.name ?? row?.[nameKey] ?? "";
+    set(codeKey, code);
+    setLookupNames((current) => ({ ...current, [nameKey]: name }));
+  }, [set]);
+
+  const clearLookup = useCallback((codeKey, nameKey) => {
+    set(codeKey, "");
+    setLookupNames((current) => ({ ...current, [nameKey]: "" }));
+  }, [set]);
 
   /* ---- data ---- */
   const { data: list = [], isLoading } = useQuery({
@@ -412,6 +467,39 @@ export default function RefEmployee() {
       .map((x) => ({ value: x.areaCode, label: `${x.areaCode} - ${x.areaName}` })),
     [areas],
   );
+
+  const { data: referenceOptions = {} } = useQuery({
+    queryKey: ["employeeReferenceLookups", "v2"],
+    queryFn: async () => Object.fromEntries(await Promise.all([
+      ["branchCode", "/lookupBranch", "branchCode", "branchName", { PARAMS: JSON.stringify({ search: "", page: 1, pageSize: 5000 }) }],
+      ["bankCode", "/bank", "bankCode", "bankName"],
+      ["clientCode", "/client", "clientCode", "clientName"],
+      ["deptCode", "/refDepartment", "deptCode", "deptName"],
+      ["statCode", "/refEmployeeStatus", "statCode", "statName"],
+      ["payGroup", "/paygroup", "groupCode", "groupName"],
+      ["posCode", "/pos", "posCode", "posName"],
+      ["shiftCode", "/shift", "shiftCode", "shiftName"],
+    ].map(async ([key, endpoint, codeKey, nameKey, params]) => {
+      const options = await fetchReferenceOptions(endpoint, codeKey, nameKey, params).catch(() => []);
+      if (key === "branchCode" && (!options.length || options.every((option) => !option.label))) {
+        return [key, await fetchReferenceOptions("/branch", codeKey, nameKey).catch(() => options)];
+      }
+      return [key, options];
+    }))),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const displayLookup = useCallback((codeKey, nameKey) => {
+    const code = employee[codeKey] || "";
+    const option = (referenceOptions[codeKey] || []).find((item) => String(item.value) === String(code));
+    const name = lookupNames[nameKey] || employee[nameKey] || option?.label || "";
+    return code ? `${code}${name ? ` - ${name}` : ""}` : "";
+  }, [employee, lookupNames, referenceOptions]);
+
+  const areaDisplayValue = useMemo(() => {
+    const selectedArea = areaOptions.find((option) => String(option.value) === String(employee.areaCode));
+    return selectedArea?.label || displayLookup("areaCode", "areaName");
+  }, [areaOptions, displayLookup, employee.areaCode]);
 
   const { data: dropdownRows = {}, isLoading: isDropdownLoading } = useQuery({
     queryKey: ["employeeDropdowns"],
@@ -519,6 +607,11 @@ export default function RefEmployee() {
       const x = JSON.parse(raw);
       const e = typeof x.employee === "string" ? JSON.parse(x.employee) : x.employee;
       setEmployee({ ...blankEmployee, ...e });
+      setLookupNames({
+        areaName: e.areaName || "", bankName: e.bankName || "", branchName: e.branchName || "",
+        clientName: e.clientName || "", deptName: e.deptName || "", statName: e.statName || "",
+        groupName: e.groupName || e.payGroupName || "", posName: e.posName || "", shiftName: e.shiftName || "",
+      });
       setDetails({
         education: x.education || [], experience: x.experience || [],
         family: x.family || [], dependents: x.dependents || [],
@@ -604,12 +697,18 @@ export default function RefEmployee() {
         <Section title="Contact & address" hint="Where and how to reach the employee." icon={faAddressCard}>
           <Grid columns="md:grid-cols-2 xl:grid-cols-3">
             <Fields data={employee} set={set} specs={[
-              ["Address 1", "address1"], ["Address 2", "address2"], ["ZIP Code", "zipCode"],
-              ["Email Address", "emailAddress"], ["Mobile No.", "contactNo"], ["Telephone No.", "telNo"],
+              ["Address 1", "address1"],
+              ["Address 2", "address2"],
+              ["ZIP Code", "zipCode"],
+              ["Email Address", "emailAddress"],
+              ["Mobile No.", "contactNo"],
+              ["Telephone No.", "telNo"],
             ]} />
             <Subhead>Emergency contact</Subhead>
             <Fields data={employee} set={set} specs={[
-              ["Contact Person", "contactPerson"], ["Relationship", "contactRelation"], ["Contact No.", "contactPhoneno"],
+              ["Contact Person", "contactPerson"],
+              ["Relationship", "contactRelation"],
+              ["Contact No.", "contactPhoneno"],
             ]} />
           </Grid>
         </Section>
@@ -619,9 +718,25 @@ export default function RefEmployee() {
     Employment: (
       <Section title="Employment details" hint="Assignment, status and key dates." icon={faBriefcase}>
         <Grid>
-          <div className="space-y-4"><Fields data={employee} set={set} specs={EMPLOYMENT_LEFT} /></div>
-          <div className="space-y-4">
-            <F label="Area" type="select" options={areaOptions} value={employee.areaCode} onChange={(v) => set("areaCode", v)} />
+          <div className="space-y-6">
+            <FieldRenderer label="Branch" type="lookup" readOnly editableLookup value={displayLookup("branchCode", "branchName")} onLookup={() => setShowBranchModal(true)} onClear={() => clearLookup("branchCode", "branchName")} />
+            <FieldRenderer label="Client" type="lookup" readOnly editableLookup value={displayLookup("clientCode", "clientName")} onLookup={() => setShowClientModal(true)} onClear={() => clearLookup("clientCode", "clientName")} />
+            <FieldRenderer label="Department" type="lookup" readOnly editableLookup value={displayLookup("deptCode", "deptName")} onLookup={() => setShowDepartmentModal(true)} onClear={() => clearLookup("deptCode", "deptName")} />
+            <FieldRenderer label="Position" type="lookup" readOnly editableLookup value={displayLookup("posCode", "posName")} onLookup={() => setShowPositionModal(true)} onClear={() => clearLookup("posCode", "posName")} />
+            <FieldRenderer label="Employment Status" type="lookup" readOnly editableLookup value={displayLookup("statCode", "statName")} onLookup={() => setShowEmployeeStatusModal(true)} onClear={() => clearLookup("statCode", "statName")} />
+            <FieldRenderer label="Pay Group" type="lookup" readOnly editableLookup value={displayLookup("payGroup", "groupName")} onLookup={() => setShowPayGroupModal(true)} onClear={() => clearLookup("payGroup", "groupName")} />
+            <Fields data={employee} set={set} specs={EMPLOYMENT_LEFT} />
+          </div>
+          <div className="space-y-6">
+            <FieldRenderer
+              label="Area"
+              type="lookup"
+              readOnly
+              editableLookup
+              value={areaDisplayValue}
+              onLookup={() => setShowAreaModal(true)}
+              onClear={() => clearLookup("areaCode", "areaName")}
+            />
             <Fields data={employee} set={set} specs={EMPLOYMENT_DATES} />
             <F label="Old Employee No." value={employee.oldEmpno} onChange={(v) => set("oldEmpno", v)} />
             <F label="Rehired" type="select" options={ynOptions} value={employee.rehired} onChange={(v) => set("rehired", v)} />
@@ -657,7 +772,10 @@ export default function RefEmployee() {
           </div>
         </Section>
         <Section title="Bank" icon={faLandmark}>
-          <Grid><Fields data={employee} set={set} specs={[["Primary Bank", "bankCode"], ["Primary Account No.", "bankAcct"]]} /></Grid>
+          <Grid>
+            <FieldRenderer label="Primary Bank" type="lookup" readOnly editableLookup value={displayLookup("bankCode", "bankName")} onLookup={() => setShowBankModal(true)} onClear={() => clearLookup("bankCode", "bankName")} />
+            <F label="Primary Account No." value={employee.bankAcct} onChange={(v) => set("bankAcct", v)} />
+          </Grid>
         </Section>
       </div>
     ),
@@ -665,7 +783,7 @@ export default function RefEmployee() {
     Schedule: (
       <Section title="Work schedule" hint="Default shift, rest days and location rules." icon={faCalendarDays}>
         <Grid columns="md:grid-cols-2 xl:grid-cols-3">
-          <F label="Default Shift" value={employee.shiftCode} onChange={(v) => set("shiftCode", v)} />
+          <FieldRenderer label="Default Shift" type="lookup" readOnly editableLookup value={displayLookup("shiftCode", "shiftName")} onLookup={() => setShowShiftModal(true)} onClear={() => clearLookup("shiftCode", "shiftName")} />
           <F label="Geofence Required" type="select" options={ynOptions} value={employee.geofence} onChange={(v) => set("geofence", v)} />
           <span className="hidden xl:block" />
           <F label="Rest Day 1" type="select" options={DAYS} value={employee.rd1} onChange={(v) => set("rd1", v)} />
@@ -821,6 +939,28 @@ export default function RefEmployee() {
           autoFillGrid="True"
         />
       </div>
+
+      <AreaLookupModal
+        isOpen={showAreaModal}
+        onClose={(area) => {
+          if (area) chooseLookup("areaCode", "areaName", area);
+          setShowAreaModal(false);
+        }}
+      />
+      <BranchLookupModal
+        isOpen={showBranchModal}
+        onClose={(branch) => {
+          if (branch) chooseLookup("branchCode", "branchName", branch);
+          setShowBranchModal(false);
+        }}
+      />
+      <BankLookupModal isOpen={showBankModal} onClose={(row) => { if (row) chooseLookup("bankCode", "bankName", row); setShowBankModal(false); }} />
+      <ClientLookupModal isOpen={showClientModal} onClose={(row) => { if (row) chooseLookup("clientCode", "clientName", row); setShowClientModal(false); }} />
+      <DepartmentLookupModal isOpen={showDepartmentModal} onClose={(row) => { if (row) chooseLookup("deptCode", "deptName", row); setShowDepartmentModal(false); }} />
+      <EmployeeStatusLookupModal isOpen={showEmployeeStatusModal} onClose={(row) => { if (row) chooseLookup("statCode", "statName", row); setShowEmployeeStatusModal(false); }} />
+      <PayGroupLookupModal isOpen={showPayGroupModal} onClose={(row) => { if (row) chooseLookup("payGroup", "groupName", row); setShowPayGroupModal(false); }} />
+      <PositionLookupModal isOpen={showPositionModal} onClose={(row) => { if (row) chooseLookup("posCode", "posName", row); setShowPositionModal(false); }} />
+      <ShiftLookupModal isOpen={showShiftModal} onClose={(row) => { if (row) chooseLookup("shiftCode", "shiftName", row); setShowShiftModal(false); }} />
     </div>
   );
 }

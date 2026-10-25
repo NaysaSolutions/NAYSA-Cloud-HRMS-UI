@@ -23,15 +23,16 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
-const SearchMSInvCateg = ({
+const BranchLookupModal = ({
   isOpen,
   onClose,
-  title = "Search MS Inventory Category Codes",
-  withPagination = false,
+  customParam = "",
+  title = "Search Branch Code",
+  withPagination = false, // New parameter: defaults to false
 }) => {
   const [filters, setFilters] = useState({
-    code: "",
-    description: "",
+    branchCode: "",
+    branchName: "",
   });
 
   const [sortConfig, setSortConfig] = useState({
@@ -40,16 +41,16 @@ const SearchMSInvCateg = ({
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-
+  
   // Set pageSize to a very large number if pagination is disabled
-  const pageSize = withPagination ? 100 : 999999;
+  const pageSize = withPagination ? 100 : 999999; 
 
   const hasActiveFilters = Object.values(filters).some((val) => val !== "");
 
   const resetFilters = () =>
     setFilters({
-      code: "",
-      description: "",
+      branchCode: "",
+      branchName: "",
     });
 
   const debouncedFilters = useDebounce(filters, 300);
@@ -59,30 +60,27 @@ const SearchMSInvCateg = ({
     setCurrentPage(1);
   }, [debouncedFilters]);
 
-  // Fetch category list
+  // Fetching data using TanStack Query
   const {
-    data: categories = [],
+    data: branches = [],
     isLoading,
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["lookupMSInvCateg"],
+    queryKey: ["lookupBranch", customParam],
     queryFn: async () => {
-      const res = await apiClient.get("/msCateg");
+      const { data: result } = await apiClient.get("/lookupBranch", {
+        params: {
+          PARAMS: JSON.stringify({
+            search: "",
+            page: 1,
+            pageSize: 5000, // Fetching a large set for comprehensive client-side handling
+          }),
+        },
+      });
 
-      const rawData =
-        res?.data?.data?.[0]?.result ??
-        res?.data?.result ??
-        res?.data?.data ??
-        "[]";
-
-      if (Array.isArray(rawData)) return rawData;
-
-      try {
-        return JSON.parse(rawData) || [];
-      } catch {
-        return [];
-      }
+      const rawData = result?.data?.[0]?.result || "[]";
+      return Array.isArray(rawData) ? rawData : JSON.parse(rawData);
     },
     enabled: isOpen,
     staleTime: 1000 * 60 * 5,
@@ -91,16 +89,16 @@ const SearchMSInvCateg = ({
 
   // Client-side Filter and Sort Logic
   const filteredAndSorted = useMemo(() => {
-    if (!categories.length) return [];
+    if (!branches.length) return [];
 
-    let result = categories.filter((item) => {
+    let result = branches.filter((item) => {
       return (
-        (item.code || "")
+        (item.branchCode || "")
           .toLowerCase()
-          .includes(debouncedFilters.code.toLowerCase()) &&
-        (item.description || "")
+          .includes(debouncedFilters.branchCode.toLowerCase()) &&
+        (item.branchName || "")
           .toLowerCase()
-          .includes(debouncedFilters.description.toLowerCase())
+          .includes(debouncedFilters.branchName.toLowerCase())
       );
     });
 
@@ -115,7 +113,7 @@ const SearchMSInvCateg = ({
     }
 
     return result;
-  }, [categories, debouncedFilters, sortConfig]);
+  }, [branches, debouncedFilters, sortConfig]);
 
   // Pagination Logic
   const paginatedData = useMemo(() => {
@@ -132,8 +130,8 @@ const SearchMSInvCateg = ({
     }));
   };
 
-  const handleApply = (category) => {
-    onClose(category);
+  const handleApply = (branch) => {
+    onClose(branch);
   };
 
   if (!isOpen) return null;
@@ -141,16 +139,16 @@ const SearchMSInvCateg = ({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 animate-fade-in">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col relative overflow-hidden transform animate-scale-in border border-slate-200">
-
+        
         {/* Header Section */}
         <div className="flex items-center justify-between bg-slate-100 border-b border-slate-200">
           <div className="flex items-center gap-2 pl-2 sm:pl-3">
             <h2 className="global-lookup-headertext-ui">{title}</h2>
             {isFetching && (
-              <div className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-              </div>
+                <div className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </div>
             )}
           </div>
 
@@ -164,7 +162,7 @@ const SearchMSInvCateg = ({
                 CLEAR
               </button>
             )}
-
+            
             {isFetching && (
               <span className="text-[9px] text-blue-500 animate-pulse font-bold flex items-center gap-1 uppercase mt-0.5">
                 <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
@@ -201,10 +199,10 @@ const SearchMSInvCateg = ({
               <thead className="sticky top-0 z-10 bg-slate-200">
                 <tr>
                   {[
-                    { label: "Category Code", key: "code", width: "w-[130px]" },
-                    { label: "Category Description", key: "description" },
+                    { label: "Branch Code", key: "branchCode", width: "w-[100px]" },
+                    { label: "Branch Name", key: "branchName"},
                   ].map((col) => (
-                    <th key={col.key} className={`global-lookup-th-ui ${col.width || ""}`}>
+                    <th key={col.key} className="global-lookup-th-ui">
                       <div
                         onClick={() => handleSort(col.key)}
                         className="flex items-center gap-3 cursor-pointer group mb-1"
@@ -212,27 +210,18 @@ const SearchMSInvCateg = ({
                         <span className="global-lookup-th-text-ui">{col.label}</span>
                         <FontAwesomeIcon
                           icon={faSort}
-                          className={`mb-1 text-[10px] ${
-                            sortConfig.key === col.key
-                              ? "text-gray-600"
-                              : "opacity-30 group-hover:opacity-100"
-                          }`}
+                          className={`mb-1 text-[10px] ${sortConfig.key === col.key ? "text-gray-600" : "opacity-30 group-hover:opacity-100"}`}
                         />
                       </div>
                       <div className="relative">
                         <input
                           type="text"
                           value={filters[col.key]}
-                          onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, [col.key]: e.target.value }))
-                          }
+                          onChange={(e) => setFilters(prev => ({ ...prev, [col.key]: e.target.value }))}
                           placeholder="Filter..."
                           className="global-lookup-filter-text-ui"
                         />
-                        <FontAwesomeIcon
-                          icon={faSearch}
-                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"
-                        />
+                        <FontAwesomeIcon icon={faSearch} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" />
                       </div>
                     </th>
                   ))}
@@ -241,14 +230,14 @@ const SearchMSInvCateg = ({
 
               <tbody className="divide-y divide-slate-100">
                 {paginatedData.length > 0 ? (
-                  paginatedData.map((category, index) => (
+                  paginatedData.map((branch, index) => (
                     <tr
-                      key={category.code || index}
-                      onClick={() => handleApply(category)}
+                      key={branch.branchCode || index}
+                      onClick={() => handleApply(branch)}
                       className="group hover:bg-blue-50 cursor-pointer transition-colors"
                     >
-                      <td className="global-lookup-td-ui font-bold">{category.code}</td>
-                      <td className="global-lookup-td-ui">{category.description}</td>
+                      <td className="global-lookup-td-ui font-bold">{branch.branchCode}</td>
+                      <td className="global-lookup-td-ui">{branch.branchName}</td>
                     </tr>
                   ))
                 ) : (
@@ -275,7 +264,7 @@ const SearchMSInvCateg = ({
           {withPagination && totalPages > 1 && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
                 className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40"
               >
@@ -285,7 +274,7 @@ const SearchMSInvCateg = ({
                 {currentPage} / {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
                 className="h-8 w-8 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-40"
               >
@@ -301,7 +290,7 @@ const SearchMSInvCateg = ({
         .animate-scale-in { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
+        
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -310,4 +299,4 @@ const SearchMSInvCateg = ({
   );
 };
 
-export default SearchMSInvCateg;
+export default BranchLookupModal;

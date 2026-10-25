@@ -51,8 +51,8 @@ import {
 const DOC_TYPE = "RefDepartment";
 
 const INITIAL_FORM = {
-  code: "",
-  description: "",
+  deptCode: "",
+  deptName: "",
   deptTypeCode: "",
   deptGroupCode: "",
   rcCode: "",
@@ -106,7 +106,7 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
       const rows = raw ? JSON.parse(raw) : [];
       return rows.map((row) => ({
         ...row,
-        description: row.description ?? row.name ?? "",
+        deptName: row.deptName ?? row.name ?? "",
       }));
     },
   });
@@ -189,11 +189,11 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
   const handleEdit = (row) => {
     if (!row) return;
 
-    setSelectedCode(row.code ?? null);
+    setSelectedCode(row.deptCode ?? null);
     setFormData({
       ...INITIAL_FORM,
-      code: row.code ?? "",
-      description: row.description ?? "",
+      deptCode: row.deptCode ?? "",
+      deptName: row.deptName ?? "",
       deptTypeCode: row.deptTypeCode ?? "",
       deptGroupCode: row.deptGroupCode ?? "",
       rcCode: row.rcCode ?? "",
@@ -214,8 +214,8 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
   const handleSave = () => {
     const payload = {
       json_data: {
-        code: formData.code,
-        description: formData.description,
+        deptCode: formData.deptCode,
+        deptName: formData.deptName,
         deptTypeCode: formData.deptTypeCode,
         deptGroupCode: formData.deptGroupCode,
         rcCode: formData.rcCode,
@@ -231,7 +231,7 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
   const handleDelete = async (row) => {
     try {
       setIsLoading(true);
-      const payload = { json_data: { code: row.code } };
+      const payload = { json_data: { deptCode: row.deptCode } };
 
       const response = await apiClient.post("/checkInUsedRefDepartment", payload);
       const sqlRow = response?.data?.data?.[0];
@@ -241,14 +241,14 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
       if (parsedData.result === "1") {
         setIsLoading(false);
         return useSwalErrorAlertAPI(
-          `Cannot Delete Department Code: ${row.code}`,
+          `Cannot Delete Department Code: ${row.deptCode}`,
           `Code was already used.`,
         );
       }
 
       const confirm = await useSwalDeleteConfirm(
         "Confirm Delete",
-        `Are you sure you want to delete Department Code: ${row.code}?`,
+        `Are you sure you want to delete Department Code: ${row.deptCode}?`,
       );
 
       if (confirm.isConfirmed) {
@@ -266,7 +266,7 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
     if (!codeValue) return;
 
     try {
-      const payload = { json_data: { code: codeValue } };
+      const payload = { json_data: { deptCode: codeValue } };
       const response = await apiClient.post("/checkDuplicateRefDepartment", payload);
 
       const sqlRow = response?.data?.data?.[0];
@@ -332,19 +332,19 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
         ),
       },
       {
-        key: "code",
+        key: "deptCode",
         label: "Dept Code",
         sortable: true,
         width: 100,
         minWidth: 100,
         render: (row) => (
           <span className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-200">
-            {row.code}
+            {row.deptCode}
           </span>
         ),
       },
       {
-        key: "description",
+        key: "deptName",
         label: "Dept Name",
         sortable: true,
         width: 200,
@@ -593,9 +593,9 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
               label="Dept Code"
               required
               type="text"
-              value={formData.code}
+              value={formData.deptCode}
               disabled={!isEditing || !!selectedCode}
-              onChange={(v) => updateForm({ code: (v || "").toUpperCase() })}
+              onChange={(v) => updateForm({ deptCode: (v || "").toUpperCase() })}
               onBlur={(e) => handleCheckDuplicate(e.target.value)}
               maxLength={getMax("DEPT_CODE")}
             />
@@ -603,9 +603,9 @@ const RefDepartment = ({ headerTabs, pageTitle, active = true }) => {
               label="Dept Name"
               required
               type="text"
-              value={formData.description}
+              value={formData.deptName}
               disabled={!isEditing}
-              onChange={(v) => updateForm({ description: v })}
+              onChange={(v) => updateForm({ deptName: v })}
               maxLength={getMax("DEPT_NAME")}
             />
             <FieldRenderer
