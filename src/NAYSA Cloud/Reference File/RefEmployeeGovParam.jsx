@@ -21,7 +21,7 @@ import {
     faVideo,
     faBuilding,
     faCircleCheck,
-    faIdCard,
+    faClock,
     faFileLines,
     faHandshake,
     faHouseUser,
@@ -63,16 +63,16 @@ const PARAM_FORM = {
     freqType: "",
     payMode: "",
 
-    compSss: "Y",
+    compSss: "",
     sssFreq: "",
 
-    compMed: "Y",
+    compMed: "",
     medFreq: "",
 
-    compTax: "Y",
+    compTax: "",
     taxFreq: "",
 
-    compHdmf: "Y",
+    compHdmf: "",
     hdmfFreq: "",
 
     taxTable: ""
@@ -126,7 +126,6 @@ const RefEmployeeGovParam = () => {
     const docCodes = ["M", "S", "W"];
     const {
         data: freqTypeOptions = [],
-        isFetching: isLoadingFreqTypes,
       } = useQuery({
         queryKey: ["hsDropdown", docCodes, "FREQ"],
         queryFn: async () => {
@@ -143,9 +142,30 @@ const RefEmployeeGovParam = () => {
               })).filter((option) => option.value);
             })
           );
+          // .flat
+          // since nakaarray yung docCodes magrereturn siya ng hindi multiple aarays
           return results.flat();
         },
       });
+
+      const {
+         data: taxTableOptions = [],
+      } = useQuery({
+        queryKey: ["hsDropdown", "TAXTBL", "TAXTBL"],
+        queryFn: async () => {
+          const { data } = await apiClient.post("/getHSDropdown", {
+            json_data: { docCode: "TAXTBL", dropdownColumn: "TAXTBL" },
+          });
+          const raw = data?.data?.[0]?.result ?? data?.[0]?.result ?? data?.result ?? [];
+          const rows = Array.isArray(raw) ? raw : JSON.parse(raw);
+          return rows.map((row) => ({
+            value: String(row.DROPDOWN_CODE ?? row.dropdownCode ?? row.code ?? row.value ?? "").trim(),
+            label: String(row.DROPDOWN_NAME ?? row.dropdownName ?? row.description ?? row.label ?? "").trim(),
+          })).filter((option) => option.value);
+        },
+      });
+
+      
 
     const { data: employeeParams = [], isLoading: isListLoading } = useQuery({
               queryKey: ["employeeParams"],
@@ -448,11 +468,8 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.taxTable}
-        </span>
-        ),
+        render: (row) => getOptionLabel(taxTableOptions, row.taxTable),
+        groupDisplayValue: (row) => getOptionLabel(taxTableOptions, row.taxFreq),
     },    
     
     ], [handleEdit]);
@@ -622,7 +639,7 @@ return (
                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
                   <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faIdCard} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
+                    <FontAwesomeIcon icon={faClock} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
                   </span>
                   <FieldRenderer
                     label="Pay Frequency"
@@ -697,7 +714,7 @@ return (
                         label="SSS Frequency" 
                         type="select" 
                         value={formData.sssFreq} 
-                        placeholder={isLoadingFreqTypes ? "Loading Frequency..." : "Select Type..."}
+                        placeholder={isLoadingFreqTypes}
                         disabled={!isEditing || (formData.compSss || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
                         options={freqTypeOptions}
                         onChange={(v) => updateForm({ sssFreq: (v || "").toUpperCase() })} 
@@ -717,21 +734,22 @@ return (
                       <FieldRenderer 
                         label="Calc. PhilHealth" 
                         type="select" 
-                        value={formData.compHdmf} 
+                        value={formData.compMed} 
                         disabled={!isEditing} 
                         options={[
                           { value: "Y", label: "Yes" },
                           { value: "N", label: "No" },
                         ]}
-                        onChange={(v) => updateForm({ compHdmf: (v || "").toUpperCase() })} 
+                        onChange={(v) => updateForm({ compMed: (v || "").toUpperCase() })} 
                       />
                       <FieldRenderer 
                         label="PhilHealth Frequency" 
                         type="select" 
-                        value={formData.hdmfFreq} 
-                        disabled={!isEditing || (formData.compHdmf || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
+                        value={formData.medFreq}
+                        placeholder={isLoadingFreqTypes}
+                        disabled={!isEditing || (formData.compMed || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
                         options = {freqTypeOptions}
-                        onChange={(v) => updateForm({ hdmfFreq: (v || "").toUpperCase() })} 
+                        onChange={(v) => updateForm({ medFreq: (v || "").toUpperCase() })} 
                       />
                     </div>
                   </div>
@@ -748,7 +766,7 @@ return (
                       <FieldRenderer 
                         label="Calc. Pagibig" 
                         type="select" 
-                        value={formData.compMed} 
+                        value={formData.compHdmf} 
                         disabled={!isEditing} 
                         options={[
                           { value: "Y", label: "Yes" },
@@ -757,11 +775,13 @@ return (
                         onChange={(v) => updateForm({ compHdmf: (v || "").toUpperCase() })} 
                       />
                       <FieldRenderer 
-                        label="PhilHealth Frequency" 
+                        label="Pag-Ibig Frequency" 
                         type="select" 
-                        value={formData.medFreq} 
-                        disabled={!isEditing || (formData.compMed || "").toUpperCase() != "Y"} 
-                        onChange={(v) => updateForm({ medFreq: (v || "").toUpperCase() })} 
+                        value={formData.hdmfFreq} 
+                        placeholder={isLoadingFreqTypes}
+                        disabled={!isEditing || (formData.compHdmf || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
+                        options={freqTypeOptions}
+                        onChange={(v) => updateForm({ hdmfFreq: (v || "").toUpperCase() })} 
                       />
                     </div>
                   </div>
@@ -775,13 +795,13 @@ return (
                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
                   <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faIdCard} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
+                    <FontAwesomeIcon icon={faClock} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
                   </span>
                   <FieldRenderer
                     label="Calc. Wtax"
                     type="select"
                     value={formData.compTax}
-                    disabled={!isEditing || (formData.compSss || "").toUpperCase() != "Y"} 
+                    disabled={!isEditing} 
                     options={[
                           { value: "Y", label: "Yes" },
                           { value: "N", label: "No" },
@@ -796,15 +816,15 @@ return (
                   <span className="flex h-8 w-7 shrink-0 items-center justify-center">
                     <FontAwesomeIcon icon={faFileLines} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
                   </span>
-                  <FieldRenderer
-                    label="Tax Table"
-                    type="text"
-                    value={formData.taxTable}
-                    disabled={!isEditing}
-                    onChange={(v) =>
-                      updateForm({ taxTable: (v || "").toUpperCase() })
-                    }
-                  />
+                    <FieldRenderer 
+                        label="WTax Frequency" 
+                        type="select" 
+                        value={formData.taxFreq}
+                        placeholder={isLoadingFreqTypes}
+                        disabled={!isEditing || (formData.compTax || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
+                        options = {freqTypeOptions}
+                        onChange={(v) => updateForm({ taxFreq: (v || "").toUpperCase() })} 
+                      />
                 </div>
 
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
@@ -812,11 +832,15 @@ return (
                     <FontAwesomeIcon icon={faHandshake} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
                   </span>
                   <FieldRenderer
-                    label="Wtax Frequency"
-                    type="text"
-                    value={formData.taxFreq}
+                    label="Tax Table"
+                    type="select"
+                    value={formData.taxTable}
                     disabled={!isEditing}
-                    onChange={(v) => updateForm({ taxFreq: v })}
+                    options = {taxTableOptions} // loads the tax table
+                    placeholder = {isLoadingTaxTable}
+                    onChange={(v) =>
+                      updateForm({ taxTable: (v || "").toUpperCase() })
+                    }
                   />
                 </div>
                 </div>
