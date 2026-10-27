@@ -4,7 +4,7 @@ import React, {
     useRef,
     useState,
 } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import { useAuth } from "@/NAYSA Cloud/Authentication/AuthContext.jsx";
@@ -22,11 +22,13 @@ import {
     faBuilding,
     faCircleCheck,
     faClock,
-    faFileLines,
+    faCalendarDays,
     faHandshake,
     faHouseUser,
     faClipboardList,
     faTableCells,
+    faCalendarCheck, 
+    faIdCardClip,
 } from "@fortawesome/free-solid-svg-icons";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 import RegistrationInfo from "@/NAYSA Cloud/Global/RegistrationInfo.jsx";
@@ -125,7 +127,8 @@ const RefEmployeeGovParam = () => {
     //make an array if you have a diff docCodes
     const docCodes = ["M", "S", "W"];
     const {
-        data: freqTypeOptions = [],
+        data: govFreqOptions = [],
+        isFetching: isLoadingGovFreq,
       } = useQuery({
         queryKey: ["hsDropdown", docCodes, "FREQ"],
         queryFn: async () => {
@@ -148,33 +151,46 @@ const RefEmployeeGovParam = () => {
         },
       });
 
-      const {
-         data: taxTableOptions = [],
-      } = useQuery({
-        queryKey: ["hsDropdown", "TAXTBL", "TAXTBL"],
-        queryFn: async () => {
-          const { data } = await apiClient.post("/getHSDropdown", {
-            json_data: { docCode: "TAXTBL", dropdownColumn: "TAXTBL" },
-          });
-          const raw = data?.data?.[0]?.result ?? data?.[0]?.result ?? data?.result ?? [];
-          const rows = Array.isArray(raw) ? raw : JSON.parse(raw);
-          return rows.map((row) => ({
-            value: String(row.DROPDOWN_CODE ?? row.dropdownCode ?? row.code ?? row.value ?? "").trim(),
-            label: String(row.DROPDOWN_NAME ?? row.dropdownName ?? row.description ?? row.label ?? "").trim(),
-          })).filter((option) => option.value);
-        },
+    //DROPDOWN 
+    //SHORT VERSION FOR DROPDOWN WITH SAME REQUEST
+    const fetchHsDropdown = async (docCode) => {
+      const { data } = await apiClient.post("/getHSDropdown", {
+      json_data: { docCode, dropdownColumn: docCode },
       });
 
-      
+    const raw = data?.data?.[0]?.result ?? data?.[0]?.result ?? data?.result ?? [];
+    const rows = Array.isArray(raw) ? raw : JSON.parse(raw);
+
+    return rows
+      .map((row) => ({
+        value: String(row.DROPDOWN_CODE ?? row.dropdownCode ?? row.code ?? row.value ?? "").trim(),
+        label: String(row.DROPDOWN_NAME ?? row.dropdownName ?? row.description ?? row.label ?? "").trim(),
+      }))
+      .filter(({ value }) => value);
+    };
+
+    const dropdownCodes = ["TAXTBL","PAYFREQ", "FREQ_TYPE", "PAYMODE"];
+
+    const [taxTable,payFreqQuery, freqTypeQuery, payModeQuery] = useQueries({
+      queries: dropdownCodes.map((code) => ({
+      queryKey: ["hsDropdown", code, code],
+      queryFn: () => fetchHsDropdown(code),
+      })),
+    });
+
+    const taxTableOptions = taxTable.data ?? [];
+    const payFreqOptions = payFreqQuery.data ?? [];
+    const freqTypeOptions = freqTypeQuery.data ?? [];
+    const payModeOptions = payModeQuery.data ?? [];
 
     const { data: employeeParams = [], isLoading: isListLoading } = useQuery({
-              queryKey: ["employeeParams"],
-              queryFn: async () => {
-              const { data } = await apiClient.get("/employeeGovParams");
-              const raw = data?.data?.[0]?.result || data?.[0]?.result || data?.result;
-              return raw ? JSON.parse(raw) : [];
-          },
-          });
+      queryKey: ["employeeParams"],
+      queryFn: async () => {
+        const { data } = await apiClient.get("/employeeGovParams");
+        const raw = data?.data?.[0]?.result || data?.[0]?.result || data?.result;
+        return raw ? JSON.parse(raw) : [];
+      },
+    });
 
     const { mutate: saveEmployeeParam, isLoading: isSaving } = useMutation({
         mutationFn: async (payload) =>
@@ -312,11 +328,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 130,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-mono text-[12px] font-bold text-sky-800 dark:text-sky-300">
-            {row.empNo}
-        </span>
-        ),
+        render: (row) => (row.empNo),
     },
     {
         key: "empName",
@@ -324,11 +336,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 240,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.empName}
-        </span>
-        ),
+        render: (row) => (row.empName),
     },
     {
         key: "branchCode",
@@ -336,11 +344,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.branchCode}
-        </span>
-        ),
+        render: (row) => (row.branchCode),
     },
     {
         key: "groupCode",
@@ -348,11 +352,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.groupCode}
-        </span>
-        ),
+        render: (row) => (row.groupCode),
     },
     {
         key: "deptCode",
@@ -360,11 +360,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.deptCode}
-        </span>
-        ),
+        render: (row) => (row.deptCode),
     },
     {
         key: "payMode",
@@ -372,11 +368,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.payMode}
-        </span>
-        ),
+        render: (row) => getOptionLabel(payModeOptions, row.payMode),
     },
     {
         key: "freqType",
@@ -384,11 +376,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.freqType}
-        </span>
-        ),
+        render: (row) => getOptionLabel(freqTypeOptions, row.freqType),
     },
     {
         key: "compSss",
@@ -404,8 +392,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => getOptionLabel(freqTypeOptions, row.sssFreq),
-        groupDisplayValue: (row) => getOptionLabel(freqTypeOptions, row.sssFreq),
+        render: (row) => getOptionLabel(govFreqOptions, row.sssFreq),
     },
     {
         key: "compMed",
@@ -421,8 +408,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => getOptionLabel(freqTypeOptions, row.medFreq),
-        groupDisplayValue: (row) => getOptionLabel(freqTypeOptions, row.medFreq),
+        render: (row) => getOptionLabel(govFreqOptions, row.medFreq),
     },    
     {
         key: "compTax",
@@ -438,8 +424,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => getOptionLabel(freqTypeOptions, row.taxFreq),
-        groupDisplayValue: (row) => getOptionLabel(freqTypeOptions, row.taxFreq),
+        render: (row) => getOptionLabel(govFreqOptions, row.taxFreq),
     },    
     {
         key: "compHdmf",
@@ -447,11 +432,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => (
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {row.compHdmf}
-        </span>
-        ),
+        render: (row) => (row.compTax === "Y" ? "Yes" : "No"),
     },    
     {
         key: "hdmfFreq",
@@ -459,8 +440,7 @@ const RefEmployeeGovParam = () => {
         sortable: true,
         width: 150,
         requiredVisible: true,
-        render: (row) => getOptionLabel(freqTypeOptions, row.hdmfFreq),
-        groupDisplayValue: (row) => getOptionLabel(freqTypeOptions, row.hdmfFreq),
+        render: (row) => getOptionLabel(govFreqOptions, row.hdmfFreq),
     },    
     {
         key: "taxTable",
@@ -469,7 +449,6 @@ const RefEmployeeGovParam = () => {
         width: 150,
         requiredVisible: true,
         render: (row) => getOptionLabel(taxTableOptions, row.taxTable),
-        groupDisplayValue: (row) => getOptionLabel(taxTableOptions, row.taxFreq),
     },    
     
     ], [handleEdit]);
@@ -491,7 +470,7 @@ return (
                 onClick={() => setParamSubTab("paramTable")}
                 className={`inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md px-3 text-xs font-medium transition-colors sm:flex-none sm:px-4 ${
                   paramSubTab === "paramTable"
-                    ? "bg-sky-700 text-white shadow-sm"
+                    ? "bg-[#3B82F6] text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                 }`}
               >
@@ -506,7 +485,7 @@ return (
                 onClick={() => setParamSubTab("paramInfo")}
                 className={`inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-md px-3 text-xs font-semibold transition-colors sm:flex-none sm:px-4 ${
                   paramSubTab === "paramInfo"
-                    ? "bg-sky-700 text-white shadow-sm"
+                    ? "bg-[#3B82F6] text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                 }`}
               >
@@ -575,7 +554,9 @@ return (
               className="space-y-3"
             >
               <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-[0_2px_5px_rgba(15,23,42,0.12)] dark:border-slate-700 dark:bg-slate-800">
-                <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-700">
+                <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
+                  <FontAwesomeIcon icon={faIdCardClip} 
+                  className="text-blue-700 dark:text-blue-300" />
                   <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Employee Information</h3>
                   <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${isEditing ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"}`}>
                     {isEditing ? "Editing" : "Read-only"}
@@ -631,21 +612,20 @@ return (
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-[0_2px_5px_rgba(15,23,42,0.12)] dark:border-slate-700 dark:bg-slate-800">
-                <div className="mb-3 border-b border-slate-200 pb-2 dark:border-slate-700">
+                <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
+                  <FontAwesomeIcon icon={faCalendarCheck} className="text-blue-700 dark:text-blue-300" />
                   <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     PAYROLL FREQUENCY & MODE SETTINGS
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
-                  <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faClock} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
-                  </span>
                   <FieldRenderer
                     label="Pay Frequency"
-                    type="text"
+                    type="select"
                     value={formData.payFreq}
                     disabled={!isEditing}
+                    options = {payFreqOptions}
                     onChange={(v) =>
                       updateForm({ payFreq: (v || "").toUpperCase() })
                     }
@@ -653,14 +633,12 @@ return (
                 </div>
 
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
-                  <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faFileLines} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
-                  </span>
                   <FieldRenderer
                     label="Frequency Type"
-                    type="text"
+                    type="select"
                     value={formData.freqType}
                     disabled={!isEditing}
+                    options = {freqTypeOptions}
                     onChange={(v) =>
                       updateForm({ freqType: (v || "").toUpperCase() })
                     }
@@ -668,14 +646,12 @@ return (
                 </div>
 
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
-                  <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faHandshake} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
-                  </span>
                   <FieldRenderer
                     label="Payment Mode"
-                    type="text"
+                    type="select"
                     value={formData.payMode}
                     disabled={!isEditing}
+                    options = {payModeOptions}
                     onChange={(v) => updateForm({ payMode: v })}
                   />
                 </div>
@@ -693,10 +669,9 @@ return (
                   <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/70">
                     <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
                       <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        <FontAwesomeIcon icon={faCircleCheck} className="text-amber-500" />
+                        <FontAwesomeIcon icon={faHandshake} className="text-slate-400" />
                           Social Security (SSS)
                       </h4>
-                      <span className="shrink-0 rounded bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">Required</span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
                       <FieldRenderer 
@@ -714,9 +689,9 @@ return (
                         label="SSS Frequency" 
                         type="select" 
                         value={formData.sssFreq} 
-                        placeholder={isLoadingFreqTypes}
-                        disabled={!isEditing || (formData.compSss || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
-                        options={freqTypeOptions}
+                        placeholder={isLoadingGovFreq}
+                        disabled={!isEditing || (formData.compSss || "").toUpperCase() != "Y" || isLoadingGovFreq} 
+                        options={govFreqOptions}
                         onChange={(v) => updateForm({ sssFreq: (v || "").toUpperCase() })} 
                       />
                     </div>
@@ -725,10 +700,9 @@ return (
                   <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/70">
                     <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
                       <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        <FontAwesomeIcon icon={faBuilding} className="text-slate-400" />
+                        <FontAwesomeIcon icon={faClipboardList} className="text-slate-400" />
                         Philhealth (PH)
                       </h4>
-                      <span className="shrink-0 rounded bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">Optional</span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
                       <FieldRenderer 
@@ -746,9 +720,9 @@ return (
                         label="PhilHealth Frequency" 
                         type="select" 
                         value={formData.medFreq}
-                        placeholder={isLoadingFreqTypes}
-                        disabled={!isEditing || (formData.compMed || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
-                        options = {freqTypeOptions}
+                        placeholder={isLoadingGovFreq}
+                        disabled={!isEditing || (formData.compMed || "").toUpperCase() != "Y" || isLoadingGovFreq} 
+                        options = {govFreqOptions}
                         onChange={(v) => updateForm({ medFreq: (v || "").toUpperCase() })} 
                       />
                     </div>
@@ -757,10 +731,9 @@ return (
                   <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/70">
                     <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
                       <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        <FontAwesomeIcon icon={faBuilding} className="text-slate-400" />
+                        <FontAwesomeIcon icon={faHouseUser} className="text-slate-400" />
                         Pag-Ibig (HDMF)
                       </h4>
-                      <span className="shrink-0 rounded bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">Optional</span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
                       <FieldRenderer 
@@ -778,9 +751,9 @@ return (
                         label="Pag-Ibig Frequency" 
                         type="select" 
                         value={formData.hdmfFreq} 
-                        placeholder={isLoadingFreqTypes}
-                        disabled={!isEditing || (formData.compHdmf || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
-                        options={freqTypeOptions}
+                        placeholder={isLoadingGovFreq}
+                        disabled={!isEditing || (formData.compHdmf || "").toUpperCase() != "Y" || isLoadingGovFreq} 
+                        options={govFreqOptions}
                         onChange={(v) => updateForm({ hdmfFreq: (v || "").toUpperCase() })} 
                       />
                     </div>
@@ -794,9 +767,6 @@ return (
                 </div>
                 <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
-                  <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faClock} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
-                  </span>
                   <FieldRenderer
                     label="Calc. Wtax"
                     type="select"
@@ -813,31 +783,24 @@ return (
                 </div>
 
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
-                  <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faFileLines} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
-                  </span>
                     <FieldRenderer 
                         label="WTax Frequency" 
                         type="select" 
                         value={formData.taxFreq}
-                        placeholder={isLoadingFreqTypes}
-                        disabled={!isEditing || (formData.compTax || "").toUpperCase() != "Y" || isLoadingFreqTypes} 
-                        options = {freqTypeOptions}
+                        placeholder={isLoadingGovFreq}
+                        disabled={!isEditing || (formData.compTax || "").toUpperCase() != "Y" || isLoadingGovFreq} 
+                        options = {govFreqOptions}
                         onChange={(v) => updateForm({ taxFreq: (v || "").toUpperCase() })} 
                       />
                 </div>
 
                 <div className="flex min-w-0 items-start gap-2 [&>div]:!w-auto [&>div]:min-w-0 [&>div]:flex-1">
-                  <span className="flex h-8 w-7 shrink-0 items-center justify-center">
-                    <FontAwesomeIcon icon={faHandshake} aria-hidden="true" className="h-7 w-7 rounded-md bg-blue-100 p-1 text-blue-700" />
-                  </span>
                   <FieldRenderer
                     label="Tax Table"
                     type="select"
                     value={formData.taxTable}
                     disabled={!isEditing}
                     options = {taxTableOptions} // loads the tax table
-                    placeholder = {isLoadingTaxTable}
                     onChange={(v) =>
                       updateForm({ taxTable: (v || "").toUpperCase() })
                     }
