@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus, faSave, faUndo, faTrashAlt, faEdit, faUser, faBriefcase, faMoneyBillWave,
   faLandmark, faCalendarDays, faShieldHalved, faPeopleGroup, faTriangleExclamation, faAddressCard,
+  faList, faCamera, faEnvelope, faPhone, faSearch, faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import ButtonBar from "@/NAYSA Cloud/Global/ButtonBar.jsx";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
@@ -44,6 +45,11 @@ const TABS = [
   { id: "Schedule", icon: faCalendarDays },
   { id: "Access & Approval", icon: faShieldHalved },
   { id: "History & Family", icon: faPeopleGroup },
+];
+
+const VIEW_TABS = [
+  { id: "employee", label: "Employee", icon: faUser },
+  { id: "list", label: "Employee List", icon: faList },
 ];
 
 const FALLBACK_YN = [{ value: "Y", label: "Yes" }, { value: "N", label: "No" }];
@@ -123,7 +129,7 @@ const REQUIRED = [
 ];
 
 const blankEmployee = {
-  empNo: "", empName: "", lastName: "", firstName: "", middleName: "", address1: "", address2: "", civilStatus: "", gender: "", rdoCode: "", zipCode: "", emailAddress: "", contactNo: "", telNo: "", birthplace: "", contactAddress: "", contactPerson: "", contactRelation: "", contactPhoneno: "",
+  empNo: "", empName: "", lastName: "", firstName: "", middleName: "", employeePhoto: "", address1: "", address2: "", civilStatus: "", gender: "", rdoCode: "", zipCode: "", emailAddress: "", contactNo: "", telNo: "", birthplace: "", contactAddress: "", contactPerson: "", contactRelation: "", contactPhoneno: "",
   yrsService: 0, compCode: "", branchCode: "", clientCode: "", payGroup: "", deptCode: "", posCode: "", statCode: "", sgCode: "", level: "", areaCode: "", sssNo: "", tin: "", hdmfNo: "", phNo: "", umid: "", bankCode: "", bankAcct: "", bank2: "", bankCode2: "", bankAcct2: "", bank2Comp: "", bank3: "", bankCode3: "", bankAcct3: "", bank3Comp: "",
   birthdate: "", dateHired: "", dateRegularized: "", dateResigned: "", dateTerminated: "", endContract: "", payrollFreq: "", freqType: "", payMode: "", compSss: "Y", sssFreq: "", compMed: "Y", medFreq: "", compTax: "Y", taxFreq: "", compHdmf: "Y", hdmfFreq: "", taxTable: "", basic: 0, dailyRate: 0, hourRate: 0, regHrs: 8, regdaysYear: 0, regdaysMonth: 0, rendHrs: 0, cutoffHrs: 0, hdmfEmp: 0, hdmfEmpr: 0, hdmfMax: 0, mpfEmp: 0, taxRate: 0, ecolaRate: 0, cashAllowance: 0, allowHrate: 0, allowDrate: 0, projAllowance: 0, tSalary: 0, tHrate: 0, tDrate: 0,
   shiftCode: "", rd1: "", rd2: "", rd3: "", oldEmpno: "", empCode: "", rehired: "N", askappPin: "", askappPw: "", approver: "N", app1: "", app2: "", app3: "", supervisor: "", manager: "", geofence: "N", hrFlag: "N", managerFlag: "N", supervisorFlag: "N", activePort: "N", browser: "", loginTime: "", active: "Y",
@@ -226,28 +232,61 @@ const specsWithOptions = (specs, optionsByKey = {}) => specs.map(([label, key, e
   { ...extra, options: optionsByKey[key] ?? extra.options },
 ]);
 
-const TabButton = ({ active, icon, label, onClick, invalid }) => (
+/* DOM-safe id (tab names contain spaces and "&", which break aria-labelledby). */
+const tabDomId = (id) => `tab-${String(id).replace(/[^a-z0-9]+/gi, "-")}`;
+
+const TabButton = ({ active, icon, label, onClick, invalid, id, variant = "underline" }) => (
   <button
     type="button"
     role="tab"
+    id={id}
     aria-selected={active}
+    tabIndex={active ? 0 : -1}
     onClick={onClick}
-    className={`relative inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-      active
-        ? "border-blue-600 text-blue-600 dark:text-blue-400"
-        : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+    className={`relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+      variant === "pill"
+        ? `rounded-md px-4 py-2 ${active ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"}`
+        : `-mb-px rounded-t-lg border-b-2 px-4 py-3 ${active
+          ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+          : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-100"}`
     }`}
   >
-    <FontAwesomeIcon icon={icon} />
+    <FontAwesomeIcon icon={icon} className={variant === "pill" ? "" : active ? "text-blue-600 dark:text-blue-400" : "text-slate-400"} />
     {label}
-    {invalid && <span className="h-2 w-2 rounded-full bg-red-500" aria-label="Has missing required fields" />}
+    {invalid && <span className="h-2 w-2 rounded-full bg-red-500" role="img" aria-label="Has issues to fix" />}
   </button>
 );
 
+/* Accessible tab list: arrow keys / Home / End move between tabs. */
+const TabList = ({ tabs, value, onChange, label, invalidTabs, className = "", variant = "underline" }) => {
+  const onKeyDown = (e) => {
+    const i = tabs.findIndex((t) => t.id === value);
+    let n = i;
+    if (e.key === "ArrowRight") n = (i + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") n = (i - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") n = 0;
+    else if (e.key === "End") n = tabs.length - 1;
+    else return;
+    e.preventDefault();
+    onChange(tabs[n].id);
+    requestAnimationFrame(() => document.getElementById(tabDomId(tabs[n].id))?.focus());
+  };
+  const shell = variant === "pill"
+    ? "gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-gray-800"
+    : "border-b border-slate-200 dark:border-slate-700";
+  return (
+    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={`flex overflow-x-auto ${shell} ${className}`}>
+      {tabs.map((t) => (
+        <TabButton key={t.id} id={tabDomId(t.id)} variant={variant} label={t.label || t.id} icon={t.icon} active={value === t.id} invalid={invalidTabs?.has(t.id)} onClick={() => onChange(t.id)} />
+      ))}
+    </div>
+  );
+};
+
 const Fact = ({ label, value }) => (
   <div className="min-w-0">
-    <dt className="text-[11px] text-slate-400">{label}</dt>
-    <dd className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{value || "—"}</dd>
+    <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</dt>
+    <dd className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title={value || ""}>{value || "—"}</dd>
   </div>
 );
 
@@ -372,12 +411,23 @@ const PAYROLL_ALLOW = [
   ["Allowance Hourly Rate", "allowHrate", { num: true }], ["Allowance Daily Rate", "allowDrate", { num: true }],
   ["Project Allowance", "projAllowance", { num: true }],
 ];
+const PAYROLL_TOTALS = [
+  ["Total Salary", "tSalary", { num: true }], ["Total Hourly Rate", "tHrate", { num: true }], ["Total Daily Rate", "tDrate", { num: true }],
+];
 const GOVT_IDS = [
   ["TIN", "tin"], ["RDO Code", "rdoCode"], ["SSS No.", "sssNo"], ["PhilHealth No.", "phNo"], ["HDMF No.", "hdmfNo"], ["UMID", "umid"],
 ];
 const GOVT_COMPUTE = [
   ["Compute SSS", "compSss", { options: YN, type: "select" }], ["Compute PhilHealth", "compMed", { options: YN, type: "select" }],
   ["Compute Tax", "compTax", { options: YN, type: "select" }], ["Compute HDMF", "compHdmf", { options: YN, type: "select" }],
+];
+const GOVT_FREQ = [
+  ["SSS Frequency", "sssFreq", { type: "select" }], ["PhilHealth Frequency", "medFreq", { type: "select" }],
+  ["Tax Frequency", "taxFreq", { type: "select" }], ["HDMF Frequency", "hdmfFreq", { type: "select" }],
+];
+const BANK_EXTRA = [
+  ["Secondary Bank", "bank2"], ["Secondary Bank Code", "bankCode2"], ["Secondary Account No.", "bankAcct2"], ["Secondary Bank Company", "bank2Comp"],
+  ["Tertiary Bank", "bank3"], ["Tertiary Bank Code", "bankCode3"], ["Tertiary Account No.", "bankAcct3"], ["Tertiary Bank Company", "bank3Comp"],
 ];
 const GOVT_RATES = [
   ["HDMF Employee", "hdmfEmp", { num: true }], ["HDMF Employer", "hdmfEmpr", { num: true }], ["HDMF Maximum", "hdmfMax", { num: true }],
@@ -402,10 +452,12 @@ const relationFields = (p) => [
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
 
+
 export default function RefEmployee() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
+  const [viewTab, setViewTab] = useState("employee");
   const [tab, setTab] = useState(TABS[0].id);
   const [employee, setEmployee] = useState(blankEmployee);
   const [details, setDetails] = useState(emptyDetails);
@@ -422,6 +474,17 @@ export default function RefEmployee() {
   const [showPositionModal, setShowPositionModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [lookupNames, setLookupNames] = useState({});
+  const [listSearch, setListSearch] = useState("");
+  const [listStatus, setListStatus] = useState("ALL");
+  const [listEmployeeStatus, setListEmployeeStatus] = useState("ALL");
+  const [listBranch, setListBranch] = useState("ALL");
+  const [listPayGroup, setListPayGroup] = useState("ALL");
+  const [listDepartment, setListDepartment] = useState("ALL");
+  const [listPosition, setListPosition] = useState("ALL");
+  const [brokenPhoto, setBrokenPhoto] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const photoInputRef = useRef(null);
 
   const set = useCallback((k, v) => { setEmployee((p) => ({ ...p, [k]: v })); setDirty(true); }, []);
   const setDetail = useCallback((k, v) => { setDetails((p) => ({ ...p, [k]: v })); setDirty(true); }, []);
@@ -430,7 +493,44 @@ export default function RefEmployee() {
     setEmployee(blankEmployee); setDetails(emptyDetails);
     setSelected(null); setTab(TABS[0].id); setDirty(false); setShowErrors(false);
     setLookupNames({});
+    setPhotoFile(null); setPhotoPreview("");
+    if (photoInputRef.current) photoInputRef.current.value = "";
   }, []);
+
+  /* Guard against silently losing edits. */
+  const confirmDiscard = useCallback(
+    () => !dirty || window.confirm("You have unsaved changes. Discard them?"),
+    [dirty],
+  );
+
+  const photoUrl = useCallback((value) => {
+    if (!value) return "";
+    if (/^(data:|blob:|https?:\/\/)/i.test(value)) return value;
+    const base = (apiClient.defaults.baseURL || "").replace(/\/$/, "").replace(/\/api(?:\/index\.php)?$/i, "");
+    return `${base}/${String(value).replace(/^\//, "")}`;
+  }, []);
+
+  const handlePhotoChange = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      showErrorAlert("Invalid photo", "Please select a JPG, PNG, or WebP image.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showErrorAlert("Photo is too large", "Please select an image up to 5 MB.");
+      event.target.value = "";
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setDirty(true);
+  }, []);
+
+  useEffect(() => () => {
+    if (photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+  }, [photoPreview]);
 
   const chooseLookup = useCallback((codeKey, nameKey, row) => {
     const code = row?.code ?? row?.[codeKey] ?? "";
@@ -496,6 +596,14 @@ export default function RefEmployee() {
     return code ? `${code}${name ? ` - ${name}` : ""}` : "";
   }, [employee, lookupNames, referenceOptions]);
 
+  /* Name only (falls back to the code) - used by the summary card. */
+  const lookupName = useCallback((codeKey, nameKey) => {
+    const code = employee[codeKey] || "";
+    if (!code) return "";
+    const option = (referenceOptions[codeKey] || []).find((item) => String(item.value) === String(code));
+    return lookupNames[nameKey] || employee[nameKey] || option?.label || code;
+  }, [employee, lookupNames, referenceOptions]);
+
   const areaDisplayValue = useMemo(() => {
     const selectedArea = areaOptions.find((option) => String(option.value) === String(employee.areaCode));
     return selectedArea?.label || displayLookup("areaCode", "areaName");
@@ -544,7 +652,26 @@ export default function RefEmployee() {
 
   /* ---- validation ---- */
   const missing = useMemo(() => REQUIRED.filter((r) => !String(employee[r.key] ?? "").trim()), [employee]);
-  const invalidTabs = useMemo(() => new Set(showErrors ? missing.map((m) => m.tab) : []), [missing, showErrors]);
+  const issues = useMemo(() => {
+    const out = missing.map((m) => ({ tab: m.tab, message: `${m.label} is required` }));
+    const email = String(employee.emailAddress || "").trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) out.push({ tab: "Personal", message: "Email Address is not valid" });
+    const empNo = String(employee.empNo || "").trim().toUpperCase();
+    if (!selected && empNo && list.some((r) => String(r.empNo || "").toUpperCase() === empNo)) {
+      out.push({ tab: "Personal", message: `Employee No. ${empNo} already exists` });
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const birth = dateOnly(employee.birthdate);
+    if (birth && birth > today) out.push({ tab: "Personal", message: "Birthdate cannot be in the future" });
+    const hired = dateOnly(employee.dateHired);
+    [["dateRegularized", "Date Regularized"], ["endContract", "End of Contract"], ["dateResigned", "Date Resigned"], ["dateTerminated", "Date Terminated"]]
+      .forEach(([key, label]) => {
+        const d = dateOnly(employee[key]);
+        if (hired && d && d < hired) out.push({ tab: "Employment", message: `${label} cannot be earlier than Date Hired` });
+      });
+    return out;
+  }, [missing, employee, list, selected]);
+  const invalidTabs = useMemo(() => new Set(showErrors ? issues.map((i) => i.tab) : []), [issues, showErrors]);
 
   /* ---- save ---- */
   const save = useMutation({
@@ -553,8 +680,15 @@ export default function RefEmployee() {
       const x = r.data;
       if (x.errorcount > 0 || x.success === false) return showErrorAlert("Unable to save", x.errormsg || x.message);
       qc.invalidateQueries({ queryKey: ["employeeList"] });
-      showSuccessAlert("Success!", "Employee saved successfully.");
-      reset();
+      const savedEmployeeNo = employee.empNo;
+      const finish = () => { showSuccessAlert("Success!", "Employee saved successfully."); reset(); };
+      if (!photoFile || !savedEmployeeNo) return finish();
+      const formData = new FormData();
+      formData.append("EMP_NO", savedEmployeeNo);
+      formData.append("EMP_PHOTO", photoFile);
+      apiClient.post("/uploadEmployeePhoto", formData, { headers: { "Content-Type": "multipart/form-data" } })
+        .then(finish)
+        .catch((error) => showApiErrorAlert("Photo Upload Error", error));
     },
     onError: (e) => showApiErrorAlert("System Error", e),
   });
@@ -574,10 +708,11 @@ export default function RefEmployee() {
   });
 
   const handleSave = useCallback(() => {
-    if (missing.length) {
+    if (viewTab !== "employee") return; /* Ctrl+S on the list view must not save the blank form. */
+    if (issues.length) {
       setShowErrors(true);
-      setTab(missing[0].tab);
-      return showErrorAlert("Missing Required Field(s)", `${missing.map((m) => m.label).join(", ")} ${missing.length > 1 ? "are" : "is"} required.`);
+      setTab(issues[0].tab);
+      return showErrorAlert("Please fix the following", issues.map((i) => i.message).join("; ") + ".");
     }
     const empName = employee.empName || fullName(employee);
     save.mutate({
@@ -585,7 +720,7 @@ export default function RefEmployee() {
         json_data: { employee: { ...employee, empName }, ...details, userCode: user?.USER_CODE || "ADMIN" },
       }),
     });
-  }, [missing, employee, details, user, save]);
+  }, [issues, employee, details, user, save, viewTab]);
 
   /* Ctrl/Cmd + S saves. The ref keeps the listener from re-binding on every keystroke. */
   const saveRef = useRef(handleSave);
@@ -598,8 +733,17 @@ export default function RefEmployee() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  /* Warn before closing the tab with unsaved edits. */
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
   /* ---- load one record ---- */
   const edit = useCallback(async (row) => {
+    if (!confirmDiscard()) return;
     try {
       const { data } = await apiClient.get("/getEmployee", { params: { EMP_NO: row.empNo } });
       const raw = data?.data?.[0]?.result;
@@ -607,6 +751,16 @@ export default function RefEmployee() {
       const x = JSON.parse(raw);
       const e = typeof x.employee === "string" ? JSON.parse(x.employee) : x.employee;
       setEmployee({ ...blankEmployee, ...e });
+      const photoResponse = await apiClient.get("/getEmployeePhoto", { params: { EMP_NO: row.empNo } }).catch(() => null);
+      const photoPayload = photoResponse?.data?.data?.[0]?.result || photoResponse?.data?.data || photoResponse?.data?.result || photoResponse?.data;
+      let photoRecord = photoPayload;
+      if (typeof photoRecord === "string") {
+        try { photoRecord = JSON.parse(photoRecord); } catch { /* use the employee payload below */ }
+      }
+      const retrievedPhoto = e.employeePhoto || e.photoPath || e.photoUrl || e.empPhoto || e.EMP_PHOTO
+        || photoRecord?.employeePhoto || photoRecord?.photoPath || photoRecord?.photoUrl || photoRecord?.EMP_PHOTO || "";
+      setPhotoPreview(photoUrl(retrievedPhoto));
+      setPhotoFile(null);
       setLookupNames({
         areaName: e.areaName || "", bankName: e.bankName || "", branchName: e.branchName || "",
         clientName: e.clientName || "", deptName: e.deptName || "", statName: e.statName || "",
@@ -616,11 +770,11 @@ export default function RefEmployee() {
         education: x.education || [], experience: x.experience || [],
         family: x.family || [], dependents: x.dependents || [],
       });
-      setSelected(row.empNo); setTab(TABS[0].id); setDirty(false); setShowErrors(false);
+      setSelected(row.empNo); setViewTab("employee"); setTab(TABS[0].id); setDirty(false); setShowErrors(false);
     } catch (err) {
       showApiErrorAlert("Load Employee Error", err);
     }
-  }, []);
+  }, [photoUrl, confirmDiscard]);
 
   const handleDelete = useCallback(async (row) => {
     if (!row?.empNo) return;
@@ -637,43 +791,163 @@ export default function RefEmployee() {
     });
   }, [deleteEmployee, user]);
 
-  /* ---- list columns ---- */
+  /* ---- employee directory ---- */
   const columns = useMemo(() => [
-    {
-      key: "__a", label: "Actions", width: 110,
-      render: (r) => (
-        <div className="flex justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => edit(r)}
-            aria-label={`Edit ${r.empNo}`}
-            className="flex h-7 items-center justify-center rounded-md border border-blue-100 bg-blue-50 px-2 text-xs text-blue-600 transition-all hover:bg-blue-600 hover:text-white hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
-            title="Edit"
-          >
-            <FontAwesomeIcon icon={faEdit} />
-            <span className="md:hidden">Edit</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDelete(r)}
-            aria-label={`Delete ${r.empNo}`}
-            className="flex h-7 items-center justify-center rounded-md border border-red-100 bg-red-50 px-2 text-xs text-red-600 transition-all hover:bg-red-600 hover:text-white hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
-            title="Delete"
-          >
-            <FontAwesomeIcon icon={faTrashAlt} />
-            <span className="md:hidden">Delete</span>
-          </button>
-        </div>
-      ),
-    },
-    { key: "empNo", label: "Employee No.", sortable: true, width: 120, requiredVisible: true },
-    { key: "empName", label: "Employee Name", sortable: true, width: 260, requiredVisible: true },
-    { key: "branchCode", label: "Branch", width: 100 },
-    { key: "deptCode", label: "Department", width: 120 },
-    { key: "posCode", label: "Position", width: 120 },
-    { key: "statCode", label: "Status", width: 100 },
-    { key: "active", label: "Active", width: 90, render: (r) => <StatusPill active={String(r.active).toUpperCase() === "Y"} /> },
-  ], [edit, handleDelete]);
+    { key: "photo", label: "Photo", render: (r) => (
+      <span className="flex h-15 w-15 items-center justify-center overflow-hidden rounded-lg bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
+        {(r.employeePhoto || r.photoPath || r.photoUrl)
+          ? <img src={photoUrl(r.employeePhoto || r.photoPath || r.photoUrl)} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+          : initials(r)}
+      </span>
+    ) },
+    { key: "empNo", label: "Employee No." },
+    { key: "empName", label: "Employee Name", render: (r) => <span className="font-semibold text-slate-800 dark:text-slate-100">{r.empName || fullName(r) || "—"}</span> },
+    { key: "lastName", label: "Last Name" },
+    { key: "firstName", label: "First Name" },
+    { key: "middleName", label: "Middle Name" },
+    { key: "address1", label: "Address1" },
+    { key: "address2", label: "Address2" },
+    { key: "civilStatus", label: "Civil Status" },
+    { key: "gender", label: "Gender" },
+    { key: "rdoCode", label: "Rdo Code" },
+    { key: "zipCode", label: "Zip Code" },
+    { key: "emailAddress", label: "Email Address" },
+    { key: "contactNo", label: "Contact No" },
+    { key: "telNo", label: "Tel No" },
+    { key: "birthplace", label: "Birthplace" },
+    { key: "contactAddress", label: "Contact Address" },
+    { key: "contactPerson", label: "Contact Person" },
+    { key: "contactRelation", label: "Contact Relation" },
+    { key: "contactPhoneno", label: "Contact Phoneno" },
+    { key: "yrsService", label: "Years of Service" },
+    // { key: "compCode", label: "Comp Code" },
+    // { key: "branchCode", label: "Branch Code" },
+    { key: "branchName", label: "Branch Name" },
+    // { key: "clientCode", label: "Client Code" },
+    { key: "clientName", label: "Client Name" },
+    // { key: "payGroup", label: "Pay Group" },
+    { key: "payGroupName", label: "Pay Group Name" },
+    // { key: "deptCode", label: "Dept Code" },
+    { key: "deptName", label: "Department Name" },
+    // { key: "posCode", label: "Pos Code" },
+    { key: "posName", label: "Position Name" },
+    // { key: "statCode", label: "Stat Code" },
+    { key: "statName", label: "Employment Status" },
+    { key: "sgCode", label: "Sg Code" },
+    { key: "level", label: "Level" },
+    { key: "areaCode", label: "Area Code" },
+    { key: "bankCode", label: "Bank Code" },
+    { key: "bank2", label: "Bank2" },
+    { key: "bankCode2", label: "Bank Code2" },
+    { key: "bank2Comp", label: "Bank2 Comp" },
+    { key: "bank3", label: "Bank3" },
+    { key: "bankCode3", label: "Bank Code3" },
+    { key: "bank3Comp", label: "Bank3 Comp" },
+    { key: "birthdate", label: "Birthdate", render: (r) => dateOnly(r.birthdate) || "—" },
+    { key: "dateHired", label: "Date Hired", render: (r) => dateOnly(r.dateHired) || "—" },
+    { key: "dateRegularized", label: "Date Regularized", render: (r) => dateOnly(r.dateRegularized) || "—" },
+    { key: "dateResigned", label: "Date Resigned", render: (r) => dateOnly(r.dateResigned) || "—" },
+    { key: "dateTerminated", label: "Date Terminated", render: (r) => dateOnly(r.dateTerminated) || "—" },
+    { key: "endContract", label: "End Contract", render: (r) => dateOnly(r.endContract) || "—" },
+    { key: "payrollFreq", label: "Payroll Frequency" },
+    { key: "freqType", label: "Freq Type" },
+    { key: "payMode", label: "Pay Mode" },
+    { key: "compSss", label: "Comp Sss" },
+    { key: "sssFreq", label: "Sss Freq" },
+    { key: "compMed", label: "Comp Med" },
+    { key: "medFreq", label: "Med Freq" },
+    { key: "compTax", label: "Comp Tax" },
+    { key: "taxFreq", label: "Tax Freq" },
+    { key: "compHdmf", label: "Comp Hdmf" },
+    { key: "hdmfFreq", label: "Hdmf Freq" },
+    { key: "taxTable", label: "Tax Table" },
+    { key: "regHrs", label: "Reg Hrs" },
+    { key: "regdaysYear", label: "Regdays Year" },
+    { key: "regdaysMonth", label: "Regdays Month" },
+    { key: "rendHrs", label: "Rend Hrs" },
+    { key: "cutoffHrs", label: "Cutoff Hrs" },
+    { key: "hdmfEmp", label: "Hdmf Emp" },
+    { key: "hdmfEmpr", label: "Hdmf Empr" },
+    { key: "hdmfMax", label: "Hdmf Max" },
+    { key: "mpfEmp", label: "Mpf Emp" },
+    { key: "ecolaRate", label: "Ecola Rate" },
+    { key: "shiftCode", label: "Shift Code" },
+    { key: "rd1", label: "Rd1" },
+    { key: "rd2", label: "Rd2" },
+    { key: "rd3", label: "Rd3" },
+    { key: "oldEmpno", label: "Old Empno" },
+    { key: "empCode", label: "Emp Code" },
+    { key: "rehired", label: "Rehired" },
+    { key: "approver", label: "Approver" },
+    { key: "app1", label: "App1" },
+    { key: "app2", label: "App2" },
+    { key: "app3", label: "App3" },
+    { key: "supervisor", label: "Supervisor" },
+    { key: "manager", label: "Manager" },
+    { key: "geofence", label: "Geofence" },
+    { key: "hrFlag", label: "Hr Flag" },
+    { key: "managerFlag", label: "Manager Flag" },
+    { key: "supervisorFlag", label: "Supervisor Flag" },
+    { key: "activePort", label: "Active Port" },
+    { key: "browser", label: "Browser" },
+    { key: "loginTime", label: "Login Time" },
+    { key: "active", label: "Record Status", render: (r) => <StatusPill active={isYesValue(r.active)} /> },
+    { key: "registeredBy", label: "Registered By" },
+    { key: "registeredDate", label: "Registered Date", render: (r) => dateOnly(r.registeredDate) || "—" },
+    { key: "updatedBy", label: "Updated By" },
+    { key: "updatedDate", label: "Updated Date", render: (r) => dateOnly(r.updatedDate) || "—" },
+    { key: "idUpdatedBy", label: "Id Updated By" },
+    { key: "idUpdatedDate", label: "Id Updated Date", render: (r) => dateOnly(r.idUpdatedDate) || "—" },
+    { key: "srUpdatedBy", label: "Sr Updated By" },
+    { key: "srUpdatedDate", label: "Sr Updated Date", render: (r) => dateOnly(r.srUpdatedDate) || "—" },
+  ], [photoUrl]);
+
+  const tableColumns = useMemo(() => [
+    { key: "__actions", label: "Actions", width: 110, render: (r) => (
+      <div className="flex items-center justify-center gap-2">
+        <button type="button" onClick={() => edit(r)} title="Edit employee" aria-label={`Edit ${r.empNo}`}
+          className="rounded-md bg-blue-600 px-2.5 py-1.5 text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"><FontAwesomeIcon icon={faEdit} /></button>
+        <button type="button" onClick={() => handleDelete(r)} title="Delete employee" aria-label={`Delete ${r.empNo}`}
+          className="rounded-md bg-red-600 px-2.5 py-1.5 text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"><FontAwesomeIcon icon={faTrashAlt} /></button>
+      </div>
+    ) },
+    ...columns.map((col) => ({
+      ...col,
+      sortable: !col.render && col.key !== "photo",
+      width: col.key === "photo" ? 80 : col.key === "empName" ? 250 : col.key === "emailAddress" ? 220 : col.key === "address1" ? 250: col.key === "address2" ? 250 :col.key === "contactAddress" ? 250: 150,
+      minWidth: col.key === "emailAddress" ? 220 : col.minWidth,
+    })),
+  ], [columns, edit, handleDelete]);
+
+  const directoryOptions = useCallback((valueKey, labelKey) => {
+    const options = new Map();
+    list.forEach((row) => {
+      const value = String(row[valueKey] || "").trim();
+      if (!value) return;
+      const label = String(row[labelKey] || value).trim();
+      if (!options.has(value)) options.set(value, { value, label });
+    });
+    return [...options.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [list]);
+  const directoryBranches = useMemo(() => directoryOptions("branchCode", "branchName"), [directoryOptions]);
+  const directoryPayGroups = useMemo(() => directoryOptions("payGroup", "payGroupName"), [directoryOptions]);
+  const directoryDepartments = useMemo(() => directoryOptions("deptCode", "deptName"), [directoryOptions]);
+  const directoryPositions = useMemo(() => directoryOptions("posCode", "posName"), [directoryOptions]);
+  const directoryEmployeeStatuses = useMemo(() => directoryOptions("statCode", "statName"), [directoryOptions]);
+  const filteredEmployees = useMemo(() => {
+    const query = listSearch.trim().toLowerCase();
+    return list.filter((r) => {
+      if (listStatus !== "ALL" && (isYesValue(r.active) ? "ACTIVE" : "INACTIVE") !== listStatus) return false;
+      if (listBranch !== "ALL" && String(r.branchCode || "") !== listBranch) return false;
+      if (listPayGroup !== "ALL" && String(r.payGroup || "") !== listPayGroup) return false;
+      if (listDepartment !== "ALL" && String(r.deptCode || "") !== listDepartment) return false;
+      if (listPosition !== "ALL" && String(r.posCode || "") !== listPosition) return false;
+      if (listEmployeeStatus !== "ALL" && String(r.statCode || "") !== listEmployeeStatus) return false;
+      return !query || [...Object.values(r), fullName(r)]
+        .some((value) => String(value ?? "").toLowerCase().includes(query));
+    });
+  }, [list, listSearch, listStatus, listEmployeeStatus, listBranch, listPayGroup, listDepartment, listPosition]);
+  const hasListFilters = listSearch.trim() !== "" || [listStatus, listEmployeeStatus, listBranch, listPayGroup, listDepartment, listPosition].some((value) => value !== "ALL");
 
   /* ---- tab content ---- */
   const isActive = employee.active === "Y";
@@ -688,7 +962,7 @@ export default function RefEmployee() {
             <F label="Last Name" required value={employee.lastName} onChange={(v) => set("lastName", v)} />
             <F label="First Name" required value={employee.firstName} onChange={(v) => set("firstName", v)} />
             <F label="Middle Name" value={employee.middleName} onChange={(v) => set("middleName", v)} />
-            <F label="Birthdate" type="date" value={dateOnly(employee.birthdate)} onChange={(v) => set("birthdate", v)} />
+            <F label={`Birthdate${ageFrom(dateOnly(employee.birthdate)) ? ` (Age ${ageFrom(dateOnly(employee.birthdate))})` : ""}`} type="date" value={dateOnly(employee.birthdate)} onChange={(v) => set("birthdate", v)} />
             <F label="Birthplace" value={employee.birthplace} onChange={(v) => set("birthplace", v)} />
             <F label="Gender" type="select" options={dropdownOptions.gender} value={employee.gender} onChange={(v) => set("gender", v)} />
             <F label="Civil Status" type="select" options={dropdownOptions.civilStatus} value={employee.civilStatus} onChange={(v) => set("civilStatus", v)} />
@@ -709,6 +983,7 @@ export default function RefEmployee() {
               ["Contact Person", "contactPerson"],
               ["Relationship", "contactRelation"],
               ["Contact No.", "contactPhoneno"],
+              ["Contact Address", "contactAddress"],
             ]} />
           </Grid>
         </Section>
@@ -738,6 +1013,7 @@ export default function RefEmployee() {
               onClear={() => clearLookup("areaCode", "areaName")}
             />
             <Fields data={employee} set={set} specs={EMPLOYMENT_DATES} />
+            <F label="Years of Service" value={employee.yrsService} disabled onChange={() => {}} />
             <F label="Old Employee No." value={employee.oldEmpno} onChange={(v) => set("oldEmpno", v)} />
             <F label="Rehired" type="select" options={ynOptions} value={employee.rehired} onChange={(v) => set("rehired", v)} />
             <F label="Active" type="select" options={ynOptions} value={employee.active} onChange={(v) => set("active", v)} />
@@ -757,6 +1033,9 @@ export default function RefEmployee() {
         <Section title="Allowances" icon={faMoneyBillWave}>
           <Grid columns="md:grid-cols-2 xl:grid-cols-3"><Fields data={employee} set={set} specs={PAYROLL_ALLOW} /></Grid>
         </Section>
+        <Section title="Total package" hint="Salary plus allowances." icon={faMoneyBillWave}>
+          <Grid columns="md:grid-cols-2 xl:grid-cols-3"><Fields data={employee} set={set} specs={PAYROLL_TOTALS} /></Grid>
+        </Section>
       </div>
     ),
 
@@ -768,6 +1047,16 @@ export default function RefEmployee() {
         <Section title="Contributions & tax" hint="Choose which deductions are computed for this employee." icon={faLandmark}>
           <Grid columns="md:grid-cols-2 xl:grid-cols-4"><Fields data={employee} set={set} specs={specsWithOptions(GOVT_COMPUTE, { compSss: ynOptions, compMed: ynOptions, compTax: ynOptions, compHdmf: ynOptions })} /></Grid>
           <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
+            <Subhead>Deduction frequency</Subhead>
+            <Grid columns="md:grid-cols-2 xl:grid-cols-4"><Fields data={employee} set={set} specs={specsWithOptions(GOVT_FREQ, {
+              sssFreq: withCurrentOption(dropdownOptions.frequencyType, employee.sssFreq),
+              medFreq: withCurrentOption(dropdownOptions.frequencyType, employee.medFreq),
+              taxFreq: withCurrentOption(dropdownOptions.frequencyType, employee.taxFreq),
+              hdmfFreq: withCurrentOption(dropdownOptions.frequencyType, employee.hdmfFreq),
+            })} /></Grid>
+          </div>
+          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
+            <Subhead>Contribution amounts & rates</Subhead>
             <Grid columns="md:grid-cols-2 xl:grid-cols-5"><Fields data={employee} set={set} specs={GOVT_RATES} /></Grid>
           </div>
         </Section>
@@ -776,6 +1065,10 @@ export default function RefEmployee() {
             <FieldRenderer label="Primary Bank" type="lookup" readOnly editableLookup value={displayLookup("bankCode", "bankName")} onLookup={() => setShowBankModal(true)} onClear={() => clearLookup("bankCode", "bankName")} />
             <F label="Primary Account No." value={employee.bankAcct} onChange={(v) => set("bankAcct", v)} />
           </Grid>
+          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
+            <Subhead>Additional bank accounts</Subhead>
+            <Grid columns="md:grid-cols-2 xl:grid-cols-4"><Fields data={employee} set={set} specs={BANK_EXTRA} /></Grid>
+          </div>
         </Section>
       </div>
     ),
@@ -799,8 +1092,16 @@ export default function RefEmployee() {
           <Grid columns="md:grid-cols-2 xl:grid-cols-3">
             <Fields data={employee} set={set} specs={specsWithOptions(ACCESS_FLAGS, { activePort: ynOptions, hrFlag: ynOptions, approver: ynOptions, supervisorFlag: ynOptions, managerFlag: ynOptions })} />
             <F label="Employee Portal Code" value={employee.empCode} onChange={(v) => set("empCode", v)} />
-            <F label="PIN" value={employee.askappPin} onChange={(v) => set("askappPin", v)} />
+            <F label="PIN" type="password" value={employee.askappPin} onChange={(v) => set("askappPin", v)} />
+            <F label="Portal Password" type="password" value={employee.askappPw} onChange={(v) => set("askappPw", v)} />
           </Grid>
+          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
+            <Subhead>Last portal session (read-only)</Subhead>
+            <Grid columns="md:grid-cols-2 xl:grid-cols-3">
+              <F label="Browser" value={employee.browser} disabled onChange={() => {}} />
+              <F label="Last Login" value={employee.loginTime} disabled onChange={() => {}} />
+            </Grid>
+          </div>
         </Section>
         <Section title="Approval chain" icon={faShieldHalved}>
           <Grid columns="md:grid-cols-2 xl:grid-cols-3"><Fields data={employee} set={set} specs={[
@@ -829,83 +1130,114 @@ export default function RefEmployee() {
   };
 
   /* ---- render ---- */
+  const photoSrc = photoPreview || photoUrl(employee.employeePhoto);
+  const showPhoto = !!photoSrc && brokenPhoto !== photoSrc;
+  const inputCls = "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-gray-900 dark:text-slate-100";
+
   return (
     <div className="global-ref-main-div-ui">
       {(isLoading || isDropdownLoading || save.isPending || deleteEmployee.isPending) && <LoadingSpinner />}
 
-      {/* Page header */}
-      <div className="global-ref-header-ui mb-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+      {/* Page header: title left, view tabs center, actions right. */}
+      <div className="global-ref-header-ui mb-4">
+        <div className="grid grid-cols-1 items-center gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)]">
+          <div className="min-w-0">
             <h1 className="global-ref-headertext-ui">Employee Masterdata</h1>
-            <p className="mt-1 text-xs text-slate-500">
-              Create and maintain employee personal, employment, payroll, and access information.
-            </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex justify-center lg:justify-self-center">
+            <TabList tabs={VIEW_TABS} value={viewTab} onChange={setViewTab} label="Employee views" variant="pill" />
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-3 lg:justify-self-end">
             {dirty && (
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600" role="status">
                 <span className="h-2 w-2 rounded-full bg-amber-500" /> Unsaved changes
               </span>
             )}
-            <ButtonBar
-              buttons={[
-                { key: "add", label: "Add", icon: faPlus, onClick: reset },
-                { key: "save", label: "Save", icon: faSave, onClick: handleSave, disabled: save.isPending },
-                { key: "reset", label: "Reset", icon: faUndo, onClick: reset },
-              ]}
-            />
+            <ButtonBar buttons={[
+              { key: "add", label: "Add", icon: faPlus, onClick: () => { if (!confirmDiscard()) return; reset(); setViewTab("employee"); } },
+              { key: "save", label: "Save", icon: faSave, onClick: handleSave, disabled: save.isPending || viewTab !== "employee" },
+              { key: "reset", label: "Reset", icon: faUndo, onClick: () => { if (confirmDiscard()) reset(); }, disabled: viewTab !== "employee" },
+              ...(selected && viewTab === "employee" ? [{ key: "delete", label: "Delete", icon: faTrashAlt, onClick: () => handleDelete({ empNo: employee.empNo }), disabled: deleteEmployee.isPending }] : []),
+            ]} />
           </div>
         </div>
       </div>
 
-      <div className="global-ref-tab-div-ui mt-24 space-y-4">
+      {viewTab === "employee" && <div className="global-ref-tab-div-ui space-y-4">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-gray-800">
-          {/* Record summary */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-4 p-5">
-            <div className="flex min-w-0 items-center gap-4">
-              <div
-                aria-hidden="true"
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-semibold text-white"
-              >
-                {initials(employee)}
+          {/* Photo panel and record summary */}
+          <div className="grid gap-4 p-4 lg:grid-cols-[245px_minmax(0,1fr)]">
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-gray-800">
+              <h2 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Employee Photo</h2>
+              <button type="button" onClick={() => photoInputRef.current?.click()}
+                className="group relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-6xl font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title="Upload or change employee photo" aria-label="Upload or change employee photo">
+                {showPhoto
+                  ? <img src={photoSrc} alt={`${name || "Employee"} photo`} className="h-full w-full object-cover" onError={() => setBrokenPhoto(photoSrc)} />
+                  : initials(employee)}
+                <span className="absolute inset-x-0 bottom-0 bg-black/60 py-2 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                  <FontAwesomeIcon icon={faCamera} className="mr-1" /> Change photo
+                </span>
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoChange} aria-label="Upload employee photo" />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={() => photoInputRef.current?.click()}
+                  className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                  <FontAwesomeIcon icon={faCamera} className="mr-1.5" /> {showPhoto ? "Change Photo" : "Upload Photo"}
+                </button>
+                {photoFile && (
+                  <button type="button" title="Discard unsaved photo selection"
+                    onClick={() => { setPhotoFile(null); setPhotoPreview(selected ? photoUrl(employee.employeePhoto) : ""); if (photoInputRef.current) photoInputRef.current.value = ""; }}
+                    className="rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
+                    <FontAwesomeIcon icon={faTimes} className="mr-1" /> Discard
+                  </button>
+                )}
               </div>
-              <div className="min-w-0">
-                <div className="truncate text-lg font-semibold text-slate-800 dark:text-slate-100">
-                  {name || "New employee"}
-                </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span>{selected ? `Employee No. ${employee.empNo}` : "Not yet saved"}</span>
-                  <StatusPill active={isActive} />
-                </div>
-              </div>
-            </div>
+              <p className="mt-2 text-center text-[11px] text-slate-500 dark:text-slate-400">JPG, PNG, or WebP · Max 5 MB</p>
+              {photoFile && <p className="mt-1 truncate text-center text-[11px] text-blue-600" title={photoFile.name}>{photoFile.name} (pending save)</p>}
+            </section>
 
-            <dl className="ml-auto grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
-              <Fact label="Department" value={employee.deptCode} />
-              <Fact label="Position" value={employee.posCode} />
-              <Fact label="Date hired" value={dateOnly(employee.dateHired)} />
-              <Fact label="Length of service" value={tenureFrom(dateOnly(employee.dateHired))} />
-            </dl>
+            <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-gray-800">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="truncate text-xl font-bold text-slate-800 dark:text-slate-100">{name || "New employee"}</h2>
+                <StatusPill active={isActive} />
+                {employee.rehired === "Y" && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">Rehired</span>}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{selected ? `Employee No. ${employee.empNo}` : "Complete the employee information below."}</p>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <Fact label="Department" value={lookupName("deptCode", "deptName")} />
+                <Fact label="Position" value={lookupName("posCode", "posName")} />
+                <Fact label="Employment status" value={lookupName("statCode", "statName")} />
+                <Fact label="Branch" value={lookupName("branchCode", "branchName")} />
+                <Fact label="Date hired" value={dateOnly(employee.dateHired)} />
+                <Fact label="Length of service" value={tenureFrom(dateOnly(employee.dateHired))} />
+              </dl>
+              {(employee.emailAddress || employee.contactNo) && (
+                <div className="mt-4 flex flex-wrap gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-700">
+                  {employee.emailAddress && <a href={`mailto:${employee.emailAddress}`} className="hover:text-blue-600"><FontAwesomeIcon icon={faEnvelope} className="mr-1.5" />{employee.emailAddress}</a>}
+                  {employee.contactNo && <a href={`tel:${employee.contactNo}`} className="hover:text-blue-600"><FontAwesomeIcon icon={faPhone} className="mr-1.5" />{employee.contactNo}</a>}
+                </div>
+              )}
+            </section>
           </div>
 
-          {showErrors && missing.length > 0 && (
-            <div role="alert" className="mx-5 mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          {showErrors && issues.length > 0 && (
+            <div role="alert" className="mx-4 mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
               <FontAwesomeIcon icon={faTriangleExclamation} className="mt-0.5" />
-              <span>Complete the required fields before saving: {missing.map((m) => m.label).join(", ")}.</span>
+              <div>
+                <p className="font-semibold">Fix the following before saving:</p>
+                <ul className="mt-1 list-disc pl-4">
+                  {issues.map((i) => <li key={`${i.tab}-${i.message}`}><button type="button" className="underline-offset-2 hover:underline" onClick={() => setTab(i.tab)}>{i.message}</button> <span className="opacity-60">({i.tab})</span></li>)}
+                </ul>
+              </div>
             </div>
           )}
 
-          {/* Tabs */}
-          <div role="tablist" className="sticky top-0 z-10 overflow-x-auto border-y border-slate-200 bg-white px-2 dark:border-slate-700 dark:bg-gray-800">
-            <div className="flex min-w-max">
-              {TABS.map((t) => (
-                <TabButton key={t.id} label={t.id} icon={t.icon} active={tab === t.id} invalid={invalidTabs.has(t.id)} onClick={() => setTab(t.id)} />
-              ))}
-            </div>
-          </div>
+          {/* Section tabs */}
+          <TabList tabs={TABS} value={tab} onChange={setTab} label="Employee sections" invalidTabs={invalidTabs}
+            className="sticky top-0 z-10 border-t bg-white px-6 py-1 dark:bg-gray-800" />
 
-          <div className="bg-slate-50/60 p-5 dark:bg-gray-900/30">{panels[tab]}</div>
+          <div role="tabpanel" aria-labelledby={tabDomId(tab)} className="bg-slate-50/60 p-5 dark:bg-gray-900/30">{panels[tab]}</div>
 
           <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-700">
             <RegistrationInfo
@@ -919,26 +1251,66 @@ export default function RefEmployee() {
             />
           </div>
         </div>
-      </div>
+      </div>}
 
-      {/* List */}
-      <div className="global-tran-table-main-div-ui mt-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Employee list <span className="ml-1 font-normal text-slate-400">({list.length})</span>
-          </h2>
-          <span className="text-xs text-slate-400">Double-click a row or use the edit action to open a record.</span>
-        </div>
-        <SearchGlobalReferenceTable
-          docType="Employee"
-          columns={columns}
-          data={list}
-          isLoading={isLoading}
-          onRowDoubleClick={edit}
-          itemsPerPage={50}
-          autoFillGrid="True"
-        />
-      </div>
+      {/* Employee directory */}
+      {viewTab === "list" && (
+        <section className="mt-28 space-y-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-gray-800">
+            <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+              <FontAwesomeIcon icon={faSearch} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="search" value={listSearch} onChange={(e) => setListSearch(e.target.value)} placeholder="Search any employee information…"
+                aria-label="Search employees" className={`${inputCls} w-full pl-9`} />
+            </div>
+            <select value={listStatus} onChange={(e) => setListStatus(e.target.value)} aria-label="Filter by record status" className={inputCls}>
+              <option value="ALL">All record statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+            <select value={listBranch} onChange={(e) => setListBranch(e.target.value)} aria-label="Filter by branch" className={inputCls}>
+              <option value="ALL">All branches</option>
+              {directoryBranches.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <select value={listPayGroup} onChange={(e) => setListPayGroup(e.target.value)} aria-label="Filter by payroll group" className={inputCls}>
+              <option value="ALL">All payroll groups</option>
+              {directoryPayGroups.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <select value={listDepartment} onChange={(e) => setListDepartment(e.target.value)} aria-label="Filter by department" className={inputCls}>
+              <option value="ALL">All departments</option>
+              {directoryDepartments.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <select value={listPosition} onChange={(e) => setListPosition(e.target.value)} aria-label="Filter by position" className={inputCls}>
+              <option value="ALL">All positions</option>
+              {directoryPositions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <select value={listEmployeeStatus} onChange={(e) => setListEmployeeStatus(e.target.value)} aria-label="Filter by employee status" className={inputCls}>
+              <option value="ALL">All employee statuses</option>
+              {directoryEmployeeStatuses.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            {hasListFilters && (
+              <button type="button" onClick={() => { setListSearch(""); setListStatus("ALL"); setListEmployeeStatus("ALL"); setListBranch("ALL"); setListPayGroup("ALL"); setListDepartment("ALL"); setListPosition("ALL"); }}
+                className="text-xs font-medium text-blue-600 hover:underline">Clear filters</button>
+            )}
+            <span className="text-xs text-slate-500" role="status">
+              {filteredEmployees.length === list.length ? `${list.length} employees` : `${filteredEmployees.length} of ${list.length} employees`}
+            </span>
+
+          </div>
+
+          <SearchGlobalReferenceTable
+            docType="Employee"
+            columns={tableColumns}
+            data={filteredEmployees}
+            isLoading={isLoading}
+            onRowDoubleClick={edit}
+            itemsPerPage={500}
+            autoFillGrid="True"
+            tableHeight="calc(100vh - 340px)"
+            recordPadding="8px 8px"
+            recordSpacing="0px"
+          />
+        </section>
+      )}
 
       <AreaLookupModal
         isOpen={showAreaModal}

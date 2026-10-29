@@ -82,6 +82,10 @@ const SearchGlobalReferenceTable = forwardRef(
       tableSize = "Full",
       onMobileRowOpen,
       autoFillGrid: autoFillGridProp = undefined,
+      // Optional layout controls supplied by the calling form.
+      tableHeight,
+      recordPadding,
+      recordSpacing,
     },
     ref,
   ) => {
@@ -101,6 +105,15 @@ const SearchGlobalReferenceTable = forwardRef(
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [exportType, setExportType] = useState(null);
     const [exportFileName, setExportFileName] = useState("");
+
+    const toCssSize = (value) =>
+      typeof value === "number" ? `${value}px` : value;
+    const recordPaddingStyle = recordPadding !== undefined
+      ? { padding: toCssSize(recordPadding) }
+      : undefined;
+    const recordSpacingStyle = recordSpacing !== undefined
+      ? { borderSpacing: `0 ${toCssSize(recordSpacing)}` }
+      : undefined;
 
     useEffect(() => {
       if (autoFillGridProp !== undefined) {
@@ -1594,7 +1607,16 @@ const SearchGlobalReferenceTable = forwardRef(
           </div>
         )}
 
-        <div className="global-tran-table-main-sub-div-ui flex flex-col flex-1 min-h-[400px] relative">
+        <div
+          className={`global-tran-table-main-sub-div-ui flex flex-col relative ${
+            tableHeight === undefined ? "flex-1 min-h-[400px]" : "flex-none"
+          }`}
+          style={tableHeight !== undefined ? {
+            height: toCssSize(tableHeight),
+            maxHeight: toCssSize(tableHeight),
+            minHeight: 0,
+          } : undefined}
+        >
           {isInitialLoading ? (
             <TableLoader />
           ) : useCardView ? (
@@ -1615,11 +1637,14 @@ const SearchGlobalReferenceTable = forwardRef(
               </div>
 
               <table
-                className={`global-tran-table-div-ui border-collapse ${
+                className={`global-tran-table-div-ui ${
+                  recordSpacing !== undefined ? "border-separate" : "border-collapse"
+                } ${
                   autoFillGrid
                     ? "table-fixed w-full min-w-full"
                     : "table-auto min-w-max w-max"
                 }`}
+                style={recordSpacingStyle}
               >
                 <thead className="global-tran-thead-div-ui text-[11px] sticky top-0 z-20 bg-white dark:bg-slate-800 shadow-sm">
                   <tr>
@@ -1754,7 +1779,7 @@ const SearchGlobalReferenceTable = forwardRef(
                             className="global-tran-tr-ui bg-gray-100 dark:bg-slate-700/60 cursor-pointer"
                             onClick={() => toggleGroup(row)}
                           >
-                            <td colSpan={visibleCols.length} className="global-tran-td-ui font-semibold text-blue-900 dark:text-blue-300 border-b dark:border-slate-600">
+                            <td colSpan={visibleCols.length} className="global-tran-td-ui font-semibold text-blue-900 dark:text-blue-300 border-b dark:border-slate-600" style={recordPaddingStyle}>
                               <div className="flex items-center" style={{ paddingLeft: row.level * 20 }}>
                                 <FontAwesomeIcon icon={isExpanded ? faChevronDown : faChevronRight} className="mr-2 text-gray-500" />
                                 <span className="mr-2 text-gray-600">{columns.find((c) => c.key === row.key)?.label}:</span>
@@ -1791,6 +1816,7 @@ const SearchGlobalReferenceTable = forwardRef(
                                 style={{
                                   ...getWidthStyle(col, manualResizedCols[col.key]),
                                   left: isStickyLeft ? leftOffset : undefined,
+                                  ...recordPaddingStyle,
                                 }}
                               >
                                 <div className={cellTextWrapClass} title={getCellDisplayText(row, col)}>
