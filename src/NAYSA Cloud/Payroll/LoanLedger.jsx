@@ -8,7 +8,7 @@ import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 import { useSwalErrorAlertAPI, useSwalValidationAlert } from "@/NAYSA Cloud/Global/behavior.jsx";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import SearchBranchRef from "@/NAYSA Cloud/Lookup/SearchBranchRef.jsx";
-import SearchCutoffRef from "@/NAYSA Cloud/Lookup/SearchCutoffRef.jsx";
+import SearchCutoffRef from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod.jsx";
 import SearchDepartmentRef from "@/NAYSA Cloud/Lookup/SearchDepartmentRef.jsx";
 import SearchEmployeeRef from "@/NAYSA Cloud/Lookup/SearchEmployeeRef.jsx";
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable";

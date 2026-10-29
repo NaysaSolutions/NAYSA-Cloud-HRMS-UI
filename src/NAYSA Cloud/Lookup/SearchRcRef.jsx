@@ -59,6 +59,8 @@ const SearchRcRef = ({
     },
     enabled: isOpen,
     staleTime: 1000 * 60,
+    refetchInterval: 1000 * 20,
+    refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
   });
 

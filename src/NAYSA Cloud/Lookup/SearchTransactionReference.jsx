@@ -26,6 +26,8 @@ const SearchTransactionReference = ({ isOpen, onClose, endpoint, queryKey, title
     queryFn: async () => parseRows(await apiClient.get(endpoint, { params })),
     enabled: isOpen,
     staleTime: 300000,
+    refetchInterval: 1000 * 20,
+    refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
   });
 

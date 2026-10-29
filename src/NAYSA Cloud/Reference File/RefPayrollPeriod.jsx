@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "./RefPayrollPeriod.css";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
@@ -794,7 +793,7 @@ const handleSave = () => {
           </div>
 
           {/* 3-COLUMN FORM LAYOUT */}
-          <div id="ref-cutoff-fields" className={`grid grid-cols-1 md:grid-cols-3 gap-x-6 transition-all duration-200 ${isFieldsExpanded ? "opacity-100" : "hidden"}`}>
+          <div className={`grid grid-cols-1 md:grid-cols-3 gap-x-6 transition-all duration-200 ${isFieldsExpanded ? "opacity-100" : "hidden"}`}>
             
             {/* Column 1 */}
             <div className="flex flex-col gap-y-4">
@@ -948,7 +947,7 @@ const handleSave = () => {
 
           </div>
 
-          <div id="ref-cutoff-registration" className={`mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 transition-all duration-200 ${isFieldsExpanded ? "opacity-100" : "hidden"}`}>
+          <div className={`mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 transition-all duration-200 ${isFieldsExpanded ? "opacity-100" : "hidden"}`}>
             <RegistrationInfo layout="straight" data={registrationInfo} />
           </div>
         </div>

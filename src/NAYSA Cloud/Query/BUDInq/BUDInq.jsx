@@ -25,7 +25,7 @@ import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import SearchBranchRef from "@/NAYSA Cloud/Lookup/SearchBranchRef.jsx";
 import SearchBudItemRef from "@/NAYSA Cloud/Lookup/SearchBudItemRef.jsx";
 import SearchCOAMast from "@/NAYSA Cloud/Lookup/SearchCOAMast.jsx";
-import SearchCutOffRef from "@/NAYSA Cloud/Lookup/SearchCutOffRef.jsx";
+import SearchCutOffRef from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod.jsx";
 import SearchGlobalReportTable from "@/NAYSA Cloud/Lookup/SearchGlobalReportTable.jsx";
 import SearchRCMast from "@/NAYSA Cloud/Lookup/SearchRCMast.jsx";
 

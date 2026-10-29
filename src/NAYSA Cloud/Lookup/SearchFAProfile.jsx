@@ -46,6 +46,8 @@ const SearchFAProfile = ({ isOpen, onClose }) => {
       return extractRows(res);
     },
     enabled: isOpen,
+    refetchInterval: 1000 * 20,
+    refetchIntervalInBackground: false,
   });
 
   const profiles  = useMemo(() => profileListQuery.data || [], [profileListQuery.data]);

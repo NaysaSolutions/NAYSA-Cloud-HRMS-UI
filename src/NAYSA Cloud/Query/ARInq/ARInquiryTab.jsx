@@ -12,7 +12,7 @@ import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import {exportGenericHistoryExcel} from "@/NAYSA Cloud/Global/report";
 import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchBranchRef";
 import CustomerMastLookupModal from "@/NAYSA Cloud/Lookup/SearchCustMast";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 import { useSelectedHSColConfig } from "@/NAYSA Cloud/Global/selectedData";
 import { formatNumber, parseFormattedNumber } from "@/NAYSA Cloud/Global/behavior.jsx";
 import SearchGlobalReportTable from "@/NAYSA Cloud/Lookup/SearchGlobalReportTable.jsx";

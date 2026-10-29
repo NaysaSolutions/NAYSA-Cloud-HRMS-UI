@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faSpinner, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faEraser, faSearch, faSpinner, faSyncAlt, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import { formatDateToMMDDYYYY } from "@/NAYSA Cloud/Global/DateFormatInput.jsx";
 import { useSwalErrorAlertAPI as showErrorAlert } from "@/NAYSA Cloud/Global/behavior.jsx";
@@ -36,7 +36,8 @@ const normalizeFrequency = (freq) => {
   const val = String(freq || "").trim().toUpperCase();
   if (val.startsWith("S")) return "S";
   if (val.startsWith("M")) return "M";
-  if (val.startsWith("D") || val.startsWith("W")) return "D";
+  if (val.startsWith("W")) return "W";
+  if (val.startsWith("D")) return "D";
   return val;
 };
 
@@ -58,59 +59,61 @@ const parseCutoffsResponse = (response) => {
   }
 };
 
-const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
+const SearchRefPayrollPeriod = ({ isOpen, payFrequency, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [cutoffs, setCutoffs] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
+  const [sort, setSort] = useState({ key: "code", direction: "asc" });
+  const requestRef = useRef(null);
   const debouncedFilters = useDebounce(filters, 300);
+  const hasActiveFilters = Object.values(filters).some((value) => String(value).trim() !== "");
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const controller = new AbortController();
-    setFilters(emptyFilters);
-    setCutoffs([]);
+  const resetFilters = () => setFilters(emptyFilters);
 
-    const loadCutoffs = async () => {
+  const loadCutoffs = useCallback(async () => {
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
       setLoading(true);
       try {
-        let items = [];
-        try {
-          const response = await apiClient.get("/lookupCutOff", {
-            signal: controller.signal,
-            params: payFrequency
-              ? { json_data: JSON.stringify({ cutoffFreq: payFrequency }) }
-              : {},
-          });
-          items = parseCutoffsResponse(response);
-        } catch {
-          const fallback = await apiClient.get(
-            "/overtimeTransactions/selectionReferences",
-            { signal: controller.signal },
-          );
-          items = parseCutoffsResponse(fallback);
-        }
+        const response = await apiClient.get("/lookupCutOff", {
+          signal: controller.signal,
+          params: payFrequency ? { cutoffType: normalizeFrequency(payFrequency) } : {},
+        });
+        const items = parseCutoffsResponse(response);
 
         if (controller.signal.aborted) return;
 
-        const normalized = items.map((item) => ({
+        const normalized = items.map((item) => {
+          const rawFrequency = String(
+            item.cutoffFreq || item.cutoffFrequency || item.frequency || item.CUTOFF_FREQ || item.FREQUENCY || "",
+          ).trim();
+
+          return {
           code: String(item.code || item.cutoffCode || item.CUTOFF_CODE || "").trim(),
           description: String(
             item.description || item.cutoffName || item.CUTOFF_NAME || "",
           ).trim(),
-          cutoffFreq: normalizeFrequency(
-            item.cutoffFreq || item.cutoffFrequency || item.CUTOFF_FREQ,
-          ),
+          cutoffFreq: normalizeFrequency(rawFrequency),
+          cutoffFrequency: rawFrequency,
           cutoffStartDate: toDisplayDate(
-            item.cutoffStartDate || item.startDate || item.CUTOFF_STARTDATE,
+            item.cutoffStartDate || item.cutoffStart || item.startDate || item.CUTOFF_STARTDATE || item.CUTOFF_START,
           ),
           cutoffEndDate: toDisplayDate(
-            item.cutoffEndDate || item.endDate || item.CUTOFF_ENDDATE,
+            item.cutoffEndDate || item.cutoffEnd || item.endDate || item.CUTOFF_ENDDATE || item.CUTOFF_END,
           ),
-          cutoffDate: toDisplayDate(item.cutoffDate || item.CUTOFF_DATE),
+          cutoffDate: toDisplayDate(item.cutoffDate || item.payrollDate || item.CUTOFF_DATE || item.PAYROLL_DATE),
+          cutoffMonthCode: String(
+            item.cutoffMonthCode || item.monthCode || item.CUTOFF_MONTH_CODE || "",
+          ).trim(),
+          cutoffMonthName: String(
+            item.cutoffMonthName || item.monthName || item.month || item.cutoffMonth || item.CUTOFF_MONTH_NAME || item.CUTOFF_MONTH || "",
+          ).trim(),
           year: item.year || item.YEAR || "",
           cutoffGrp: item.cutoffGrp || item.CUTOFF_GRP || "",
           status: item.status || item.STATUS || "ACTIVE",
-        }));
+          };
+        });
 
         setCutoffs(normalized.filter((c) => c.code));
       } catch (error) {
@@ -123,11 +126,23 @@ const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    };
+  }, [payFrequency]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      requestRef.current?.abort();
+      return undefined;
+    }
+    setFilters(emptyFilters);
+    setCutoffs([]);
+    setSort({ key: "code", direction: "asc" });
     loadCutoffs();
-    return () => controller.abort();
-  }, [isOpen, payFrequency]);
+    const syncInterval = setInterval(loadCutoffs, 20000);
+    return () => {
+      clearInterval(syncInterval);
+      requestRef.current?.abort();
+    };
+  }, [isOpen, loadCutoffs]);
 
   const filtered = useMemo(() => {
     const targetFreq = normalizeFrequency(payFrequency);
@@ -135,13 +150,26 @@ const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
       ? cutoffs.filter((c) => !c.cutoffFreq || c.cutoffFreq === targetFreq)
       : cutoffs;
 
-    const baseList = freqFiltered.length > 0 ? freqFiltered : cutoffs;
-    return baseList.filter((cutoff) =>
+    const baseList = freqFiltered.filter((cutoff) =>
       columns.every(({ key }) =>
         String(cutoff[key] ?? "").toLowerCase().includes(debouncedFilters[key].trim().toLowerCase()),
       ),
     );
-  }, [cutoffs, payFrequency, debouncedFilters]);
+
+    return [...baseList].sort((left, right) => {
+      const leftValue = String(left[sort.key] ?? "").toLowerCase();
+      const rightValue = String(right[sort.key] ?? "").toLowerCase();
+      const comparison = leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: "base" });
+      return sort.direction === "asc" ? comparison : -comparison;
+    });
+  }, [cutoffs, payFrequency, debouncedFilters, sort]);
+
+  const handleSort = (key) => {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
 
   if (!isOpen) return null;
 
@@ -159,6 +187,15 @@ const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
             Select Payroll Cut-Off
           </h2>
           <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <button type="button" onClick={resetFilters} className="flex items-center gap-1.5 rounded bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-600 hover:bg-blue-100">
+                <FontAwesomeIcon icon={faEraser} />CLEAR
+              </button>
+            )}
+            {loading && <span className="text-[9px] font-bold uppercase text-blue-500 animate-pulse">Syncing...</span>}
+            <button type="button" onClick={loadCutoffs} className="p-2 text-slate-400 hover:text-blue-600" title="Refresh Data">
+              <FontAwesomeIcon icon={faSyncAlt} size="sm" spin={loading} />
+            </button>
             <button
               type="button"
               onClick={() => onClose(null)}
@@ -188,9 +225,17 @@ const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
                   {columns.map((column) => (
                     <th key={column.key} scope="col" className="border-b border-slate-200 px-4 py-2 text-left dark:border-slate-700">
                       <div className="mb-1.5 flex items-center gap-1">
-                        <label htmlFor={`cutoff-filter-${column.key}`} className="mb-1 block text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => handleSort(column.key)}
+                          className="flex items-center gap-1 text-left text-[12px] font-bold text-slate-600 dark:text-slate-300"
+                          aria-label={`Sort by ${column.label}`}
+                        >
                           {column.label}
-                        </label>
+                          <span aria-hidden="true" className="text-[10px] text-slate-400">
+                            {sort.key === column.key ? (sort.direction === "asc" ? "▲" : "▼") : "↕"}
+                          </span>
+                        </button>
                       </div>
                       <div className="relative">
                         <input
@@ -231,9 +276,12 @@ const SearchCutoffRef = ({ isOpen, payFrequency, onClose }) => {
             </table>
           )}
         </div>
+        <div className="global-lookup-footer-records-div-ui">
+          <span className="global-lookup-footer-records-text-ui">Total Records: {filtered.length}</span>
+        </div>
       </div>
     </div>
   );
 };
 
-export default SearchCutoffRef;
+export default SearchRefPayrollPeriod;

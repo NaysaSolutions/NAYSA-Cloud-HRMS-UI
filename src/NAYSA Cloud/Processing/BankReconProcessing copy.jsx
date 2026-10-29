@@ -48,7 +48,7 @@ import { useResizableTableColumns } from "@/NAYSA Cloud/Global/datatable.jsx";
 import { useFieldLenghtCheck, useGetFieldLength } from "@/NAYSA Cloud/Global/procedure";
 import { exportGenericHistoryExcel, exportGenericQueryExcel } from "@/NAYSA Cloud/Global/report";
 import BankMastLookupModal from "@/NAYSA Cloud/Lookup/SearchBankMast.jsx";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef.jsx";
+import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod.jsx";
 import ExportFileNameModal from "@/NAYSA Cloud/Lookup/SearchExport.jsx";
 import SearchGlobalEmail from "@/NAYSA Cloud/Lookup/SearchGlobalEmail.jsx";
 import jsPDF from "jspdf";

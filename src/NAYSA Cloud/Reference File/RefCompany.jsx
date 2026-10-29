@@ -6,6 +6,7 @@ import { useSwalErrorAlert as showErrorAlert, useSwalErrorAlertAPI as showApiErr
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer";
 import ButtonBar from "@/NAYSA Cloud/Global/ButtonBar";
+import SearchCutoffRef from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod.jsx";
 import { faSave, faUndo } from "@fortawesome/free-solid-svg-icons";
 
 /* These shared alert utilities retain their historical use* exports but are called as callbacks. */
@@ -19,6 +20,11 @@ const dateValue = (value) => {
   if (!value || String(value).startsWith("1900-01-01") || String(value).startsWith("0001-01-01")) return "";
   return String(value).slice(0, 10);
 };
+const inputDateValue = (value) => {
+  const text = String(value ?? "").trim();
+  const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return match ? `${match[3]}-${match[1]}-${match[2]}` : dateValue(text);
+};
 const asForm = (data) => Object.keys(INITIAL_FORM).reduce((form, key) => {
   form[key] = ["cutoffStart", "cutoffEnd", "cutoffDate"].includes(key) ? dateValue(data?.[key]) : data?.[key] ?? INITIAL_FORM[key];
   return form;
@@ -31,6 +37,7 @@ const Company = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [formData, setFormData] = useState(INITIAL_FORM);
+  const [isCutoffLookupOpen, setIsCutoffLookupOpen] = useState(false);
   const { data: fetchedData, isLoading } = useQuery({
     queryKey: ["companyData"],
     queryFn: async () => {
@@ -42,6 +49,31 @@ const Company = () => {
   });
   useEffect(() => { if (fetchedData) setFormData(asForm(fetchedData)); }, [fetchedData]);
   const update = (key, value) => setFormData((prev) => ({ ...prev, [key]: value }));
+  const handleCutoffSelection = (selected) => {
+    setIsCutoffLookupOpen(false);
+    if (!selected) return;
+    setFormData((previous) => ({
+      ...previous,
+      cutoffCode: selected.code || "",
+      cutoffName: selected.description || "",
+      cutoffStart: inputDateValue(selected.cutoffStartDate),
+      cutoffEnd: inputDateValue(selected.cutoffEndDate),
+      cutoffDate: inputDateValue(selected.cutoffDate),
+      cutoffMonthCode: selected.cutoffMonthCode || "",
+      cutoffMonthName: selected.cutoffMonthName || "",
+      cutoffFreq: selected.cutoffFrequency || selected.cutoffFreq || previous.cutoffFreq,
+    }));
+  };
+  const clearCutoffSelection = () => setFormData((previous) => ({
+    ...previous,
+    cutoffCode: "",
+    cutoffName: "",
+    cutoffStart: "",
+    cutoffEnd: "",
+    cutoffDate: "",
+    cutoffMonthCode: "",
+    cutoffMonthName: "",
+  }));
   const field = (key, label, props = {}) => <FieldRenderer id={key} label={label} value={formData[key]} onChange={(value) => update(key, value)} {...props} />;
   const payloadData = useMemo(() => ({
     ...formData, userCode: user?.USER_CODE || "ADMIN",
@@ -113,7 +145,16 @@ const Company = () => {
               { value: "W5", label: "Week 5"}, 
               { value: "M", label: "Monthly"} ] 
             })}
-          {field("cutoffCode", "Cut-Off Code")}
+          <FieldRenderer
+            id="cutoffCode"
+            label="Cut-Off Code"
+            type="lookup"
+            readOnly
+            editableLookup
+            value={formData.cutoffCode}
+            onLookup={() => setIsCutoffLookupOpen(true)}
+            onClear={clearCutoffSelection}
+          />
           {field("cutoffName", "Current Payroll Period", { disabled : true })}
           {field("cutoffStart", "Payroll Start", { type: "date", disabled : true })}
           {field("cutoffEnd", "Payroll End", { type: "date", disabled : true })}
@@ -143,6 +184,11 @@ const Company = () => {
         </Grid>
       </Section>
     </div>
+    <SearchCutoffRef
+      isOpen={isCutoffLookupOpen}
+      payFrequency={formData.cutoffType}
+      onClose={handleCutoffSelection}
+    />
   </div>;
 };
 

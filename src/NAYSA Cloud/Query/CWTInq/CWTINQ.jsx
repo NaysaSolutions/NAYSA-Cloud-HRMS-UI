@@ -30,7 +30,7 @@
 // import SearchGlobalReportTable from "@/NAYSA Cloud/Lookup/SearchGlobalReportTable.jsx";
 // import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchBranchRef";
 // import CustomerMastLookupModal from "@/NAYSA Cloud/Lookup/SearchCustMast";
-// import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+// import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 
 // const ENDPOINT = "getCWTInquiry";
 // const ENDPOINT_Att = "getCWTAtt";
@@ -899,7 +899,7 @@ import {
 import SearchGlobalReportTable from "@/NAYSA Cloud/Lookup/SearchGlobalReportTable.jsx";
 import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchBranchRef";
 import CustomerMastLookupModal from "@/NAYSA Cloud/Lookup/SearchCustMast";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 
 const ENDPOINT = "getCWTInquiry";

@@ -23,7 +23,7 @@ import DateFormatInput from "@/NAYSA Cloud/Global/DateFormatInput.jsx";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchBranchRef";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 import ItemMastLookupModal from "@/NAYSA Cloud/Lookup/SearchItemMast.jsx";
 import LocationLookupModal from "@/NAYSA Cloud/Lookup/SearchLocation.jsx";
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable";

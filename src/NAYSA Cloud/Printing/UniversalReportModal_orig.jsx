@@ -52,7 +52,7 @@
 // import COAMastLookupModal from "@/NAYSA Cloud/Lookup/SearchCOAMast";
 // import SLMastLookupModal from "@/NAYSA Cloud/Lookup/SearchSLMast";
 // import RCLookupModal from "@/NAYSA Cloud/Lookup/SearchRCMast";
-// import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+// import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 // import FGLookupModal from "@/NAYSA Cloud/Lookup/SearchFGMast";
 // import MSLookupModal from "@/NAYSA Cloud/Lookup/SearchMSMast";
 // import ItemMastLookupModal from "@/NAYSA Cloud/Lookup/SearchItemMast.jsx";
@@ -1084,7 +1084,7 @@ import CustomerMastLookupModal from "@/NAYSA Cloud/Lookup/SearchCustMast";
 import COAMastLookupModal from "@/NAYSA Cloud/Lookup/SearchCOAMast";
 import SLMastLookupModal from "@/NAYSA Cloud/Lookup/SearchSLMast";
 import RCLookupModal from "@/NAYSA Cloud/Lookup/SearchRCMast";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 import FGLookupModal from "@/NAYSA Cloud/Lookup/SearchFGMast";
 import MSLookupModal from "@/NAYSA Cloud/Lookup/SearchMSMast";
 import ItemMastLookupModal from "@/NAYSA Cloud/Lookup/SearchItemMast.jsx";

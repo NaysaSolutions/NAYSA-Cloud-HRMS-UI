@@ -27,6 +27,8 @@ const SearchLeaveReference = ({ isOpen, onClose, sourceKey, queryKey, title, cod
     },
     enabled: isOpen,
     staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 20,
+    refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
   });
 

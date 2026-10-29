@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEraser, faSearch, faSort, faSpinner, faSyncAlt, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
@@ -10,6 +10,15 @@ const parseRows = (response) => {
   if (Array.isArray(raw)) return raw;
   try { return JSON.parse(raw || "[]"); } catch { return []; }
 };
+
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 const SearchRefLookup = ({
   isOpen,
@@ -26,6 +35,7 @@ const SearchRefLookup = ({
 }) => {
   const [filters, setFilters] = useState({ code: "", name: "" });
   const [sort, setSort] = useState({ key: "", direction: "asc" });
+  const debouncedFilters = useDebounce(filters, 300);
 
   const { data: rows = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: [queryKey],
@@ -40,10 +50,13 @@ const SearchRefLookup = ({
     },
     enabled: isOpen,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 1000 * 20,
+    refetchIntervalInBackground: false,
+    placeholderData: keepPreviousData,
   });
 
   const records = useMemo(() => {
-    const result = rows.filter((row) => row.code.toLowerCase().includes(filters.code.toLowerCase()) && row.name.toLowerCase().includes(filters.name.toLowerCase()));
+    const result = rows.filter((row) => row.code.toLowerCase().includes(debouncedFilters.code.toLowerCase()) && row.name.toLowerCase().includes(debouncedFilters.name.toLowerCase()));
     if (sort.key) {
       result.sort((a, b) => {
         const left = String(a[sort.key] ?? "");
@@ -53,7 +66,7 @@ const SearchRefLookup = ({
       });
     }
     return result;
-  }, [rows, filters, sort]);
+  }, [rows, debouncedFilters, sort]);
 
   useEffect(() => {
     if (!isOpen) setFilters({ code: "", name: "" });

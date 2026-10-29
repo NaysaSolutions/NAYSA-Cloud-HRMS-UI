@@ -20,7 +20,7 @@ import AllTranHistory from "@/NAYSA Cloud/Lookup/SearchGlobalTranHistory.jsx";
 import SearchEmployeeRef from "@/NAYSA Cloud/Lookup/SearchEmployeeRef.jsx";
 import SearchOvertimeEmployeeSelection from "@/NAYSA Cloud/Lookup/SearchOvertimeEmployeeSelection.jsx";
 import SearchOvertimeRef from "@/NAYSA Cloud/Lookup/SearchOvertimeRef.jsx";
-import SearchCutoffRef from "@/NAYSA Cloud/Lookup/SearchCutoffRef.jsx";
+import SearchCutoffRef from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod.jsx";
 import CancelTranModal from "@/NAYSA Cloud/Lookup/SearchCancelRef.jsx";
 import AttachDocumentModal from "@/NAYSA Cloud/Lookup/SearchAttachment.jsx";
 import DocumentSignatories from "@/NAYSA Cloud/Lookup/SearchSignatory.jsx";

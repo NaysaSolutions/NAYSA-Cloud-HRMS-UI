@@ -33,7 +33,7 @@ import {
 import SearchGlobalReportTable from "@/NAYSA Cloud/Lookup/SearchGlobalReportTable.jsx";
 import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchBranchRef";
 import PayeeMastLookupModal from "@/NAYSA Cloud/Lookup/SearchVendMast";
-import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchCutoffRef";
+import CutoffLookupModal from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 
 const ENDPOINT = "getINTAXInquiry";
