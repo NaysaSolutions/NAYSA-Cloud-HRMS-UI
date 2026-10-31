@@ -94,7 +94,7 @@ const SearchOvertimeRef = ({ isOpen, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="overtime-lookup-title"
-        className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl animate-scale-in dark:border-slate-700 dark:bg-slate-900"
+        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl animate-scale-in dark:border-slate-700 dark:bg-slate-900"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-2 pl-2 sm:pl-3">

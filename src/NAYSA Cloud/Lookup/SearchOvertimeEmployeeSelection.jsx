@@ -13,12 +13,41 @@ import {
   parseOvertimeSelectionResult,
 } from "@/NAYSA Cloud/Global/overtimeSelection.js";
 
+const employeeColumns = [
+  ["empNo", "Emp No."],
+  ["empName", "Employee Name"],
+  ["branchName", "Branch"],
+  ["groupName", "Pay Group"],
+  ["deptName", "Department"],
+  ["posName", "Position"],
+  ["statName", "Status"],
+];
+
+const overtimeColumns = [
+  ["code", "OT Code"],
+  ["description", "OT Description"],
+];
+
+const normalizeValue = (value) => String(value ?? "").toLowerCase();
+
+const sortRows = (rows, sort) => {
+  if (!sort.key) return rows;
+  return [...rows].sort((left, right) => {
+    const result = normalizeValue(left[sort.key]).localeCompare(normalizeValue(right[sort.key]), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return sort.direction === "desc" ? -result : result;
+  });
+};
+
 const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [references, setReferences] = useState({
     branches: [],
     payGroups: [],
     departments: [],
+    clients: [], statuses: [], positions: [],
     overtimes: [],
   });
 
@@ -26,11 +55,16 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
     groupCode: "",
     branchCode: "",
     deptCode: "",
+    clientCode: "", employeeStatus: "", posCode: "",
     employeeNo: "",
   });
 
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [otSearch, setOtSearch] = useState("");
+  const [employeeColumnFilters, setEmployeeColumnFilters] = useState({});
+  const [otColumnFilters, setOtColumnFilters] = useState({});
+  const [employeeSort, setEmployeeSort] = useState({ key: "", direction: "asc" });
+  const [otSort, setOtSort] = useState({ key: "", direction: "asc" });
   const [defaultOtHours, setDefaultOtHours] = useState("0.00");
   const [employees, setEmployees] = useState([]);
   const [selectedEmpNos, setSelectedEmpNos] = useState(new Set());
@@ -46,7 +80,11 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
     setDefaultOtHours("0.00");
     setEmployeeSearch("");
     setOtSearch("");
-    setReferences({ branches: [], payGroups: [], departments: [], overtimes: [] });
+    setEmployeeColumnFilters({});
+    setOtColumnFilters({});
+    setEmployeeSort({ key: "", direction: "asc" });
+    setOtSort({ key: "", direction: "asc" });
+    setReferences({ branches: [], payGroups: [], departments: [], clients: [], statuses: [], positions: [], overtimes: [] });
 
     const fetchReferences = async () => {
       setLoading(true);
@@ -56,7 +94,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
         });
         if (controller.signal.aborted) return;
         const data = parseOvertimeReferences(response);
-        setReferences(data);
+        setReferences((prev) => ({ ...prev, ...data }));
         setFilters((prev) => ({
           ...prev,
           groupCode: data.payGroups.some((group) => group.value === prev.groupCode)
@@ -65,6 +103,8 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             ? prev.branchCode : "",
           deptCode: data.departments.some((department) => department.value === prev.deptCode)
             ? prev.deptCode : "",
+          // posCode: data.positions.some((position) => position.value === prev.posCode)
+          //   ? prev.posCode : "",
         }));
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -87,8 +127,11 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
           groupCode: filters.groupCode || null,
           branchCode: filters.branchCode || null,
           deptCode: filters.deptCode || null,
+          clientCode: filters.clientCode || null,
+          employeeStatus: filters.employeeStatus || null,
+          posCode: filters.posCode || null,
           employeeNo: filters.employeeNo || null,
-          payFrequency: payFrequency,
+          payFrequency,
         },
       });
 
@@ -108,13 +151,17 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
 
   const filteredEmployees = useMemo(() => {
     const keyword = employeeSearch.trim().toLowerCase();
-    if (!keyword) return employees;
-    return employees.filter(
-      (employee) =>
-        String(employee.empNo ?? "").toLowerCase().includes(keyword) ||
-        String(employee.empName ?? "").toLowerCase().includes(keyword)
-    );
-  }, [employees, employeeSearch]);
+    const filtered = employees.filter((employee) => {
+      const matchesSearch = !keyword || ["empNo", "empName", "branchName", "groupName", "deptName", "posName"].some((key) =>
+        normalizeValue(employee[key]).includes(keyword)
+      );
+      const matchesColumns = employeeColumns.every(([key]) =>
+        normalizeValue(employee[key]).includes(normalizeValue(employeeColumnFilters[key]))
+      );
+      return matchesSearch && matchesColumns;
+    });
+    return sortRows(filtered, employeeSort);
+  }, [employees, employeeSearch, employeeColumnFilters, employeeSort]);
 
   const allVisibleEmployeesSelected =
     filteredEmployees.length > 0 &&
@@ -122,13 +169,26 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
 
   const filteredOvertimes = useMemo(() => {
     const keyword = otSearch.trim().toLowerCase();
-    if (!keyword) return references.overtimes;
-    return references.overtimes.filter(
-      (ot) =>
-        String(ot.code || "").toLowerCase().includes(keyword) ||
-        String(ot.description || "").toLowerCase().includes(keyword)
-    );
-  }, [references.overtimes, otSearch]);
+    const filtered = references.overtimes.filter((ot) => {
+      const matchesSearch = !keyword || ["code", "description"].some((key) =>
+        normalizeValue(ot[key]).includes(keyword)
+      );
+      const matchesColumns = overtimeColumns.every(([key]) =>
+        normalizeValue(ot[key]).includes(normalizeValue(otColumnFilters[key]))
+      );
+      return matchesSearch && matchesColumns;
+    });
+    return sortRows(filtered, otSort);
+  }, [references.overtimes, otSearch, otColumnFilters, otSort]);
+
+  const toggleSort = (setSort, currentSort, key) => {
+    setSort({
+      key,
+      direction: currentSort.key === key && currentSort.direction === "asc" ? "desc" : "asc",
+    });
+  };
+
+  const sortIndicator = (sort, key) => (sort.key === key ? (sort.direction === "asc" ? " ↑" : " ↓") : "");
 
   const toggleEmployee = (empNo) => {
     setSelectedEmpNos((prev) => {
@@ -196,10 +256,10 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       {loading && <LoadingSpinner />}
-      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-lg bg-white shadow-xl dark:bg-slate-900">
+      <div className="flex max-h-[90vh] w-full max-w-8xl flex-col rounded-lg bg-white shadow-xl dark:bg-slate-900">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+        <div className="flex items-center justify-between border-b px-3 py-3 dark:border-slate-700">
+          <h2 className="text-base font-bold text-slate-800 dark:text-white">
             Select Employees & Overtime Types
           </h2>
           <button
@@ -212,7 +272,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 gap-3 border-b bg-slate-50 p-4 md:grid-cols-5 dark:border-slate-700 dark:bg-slate-800/50">
+        <div className="grid grid-cols-1 gap-3 border-b bg-slate-50 p-4 md:grid-cols-4 xl:grid-cols-8 dark:border-slate-700 dark:bg-slate-800/50">
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
               Payroll Group
@@ -270,6 +330,21 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
             </select>
           </div>
 
+          {[
+            ["clientCode", "Client", references.clients || []],
+            ["employeeStatus", "Employee Status", references.statuses || []],
+            ["posCode", "Position", references.positions || []],
+          ].map(([key, label, options]) => (
+            <div key={key}>
+              <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</label>
+              <select value={filters[key]} disabled={loading}
+                onChange={(event) => setFilters((prev) => ({ ...prev, [key]: event.target.value }))}
+                className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                <option value="">All {label}s</option>
+                {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+          ))}
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
               Employee No.
@@ -297,7 +372,7 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
         </div>
 
         {/* Body: 2 Tables (Employees & Overtime Types from ref_ot) */}
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-[3.5fr_1.5fr]">
           {/* Left: Employees Table */}
           <div className="flex flex-col overflow-hidden rounded border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between gap-2 bg-slate-100 px-3 py-2 dark:bg-slate-800">
@@ -308,13 +383,13 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                 type="text"
                 value={employeeSearch}
                 onChange={(e) => setEmployeeSearch(e.target.value)}
-                placeholder="Filter Emp No. / Name..."
+                placeholder="Search ..."
                 aria-label="Filter employees by number or name"
                 className="h-6 w-48 rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-white"
               />
             </div>
             <div className="flex-1 overflow-y-auto max-h-80">
-              <table className="w-full border-collapse text-left text-xs">
+              <table className="w-full border-collapse text-left text-[11px]">
                 <thead className="sticky top-0 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                   <tr>
                     <th className="w-8 p-2 text-center">
@@ -326,16 +401,42 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                         aria-label="Select all filtered employees"
                       />
                     </th>
-                    <th className="p-2">Emp No.</th>
-                    <th className="p-2">Employee Name</th>
-                    <th className="p-2">Branch</th>
-                    <th className="p-2">Dept</th>
+                    {employeeColumns.map(([key, label]) => (
+                      <th key={key} className="p-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(setEmployeeSort, employeeSort, key)}
+                          className="font-semibold hover:text-blue-600"
+                          aria-label={`Sort by ${label}`}
+                        >
+                          {label}{sortIndicator(employeeSort, key)}
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className="bg-white dark:bg-slate-800">
+                    <th className="p-1" />
+                    {employeeColumns.map(([key, label]) => (
+                      <th key={key} className="p-1">
+                        <input
+                          type="text"
+                          value={employeeColumnFilters[key] || ""}
+                          onChange={(e) =>
+                            setEmployeeColumnFilters((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                          // placeholder={`Filter ${label}`}
+                          placeholder={`Filter ...`}
+                          aria-label={`Filter employees by ${label}`}
+                          className="h-6 w-full min-w-0 rounded border border-slate-300 bg-white px-1 text-[10px] font-normal dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                        />
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-4 text-center text-slate-400">
+                      <td colSpan={7} className="p-4 text-center text-slate-400">
                         {employees.length === 0
                           ? 'Click "Load Employees" to view records.'
                           : "No matching employees found."}
@@ -355,10 +456,13 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                             onChange={() => toggleEmployee(emp.empNo)}
                           />
                         </td>
-                        <td className="p-2 font-medium">{emp.empNo}</td>
+                        <td className="p-2">{emp.empNo}</td>
                         <td className="p-2">{emp.empName}</td>
-                        <td className="p-2">{emp.branchCode}</td>
-                        <td className="p-2">{emp.deptCode}</td>
+                        <td className="p-2">{emp.branchName}</td>
+                        <td className="p-2">{emp.groupName}</td>
+                        <td className="p-2">{emp.deptName}</td>
+                        <td className="p-2">{emp.posName}</td>
+                        <td className="p-2">{emp.statName}</td>
                       </tr>
                     ))
                   )}
@@ -371,18 +475,19 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
           <div className="flex flex-col overflow-hidden rounded border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between gap-2 bg-slate-100 px-3 py-2 dark:bg-slate-800">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                Overtime Types - ref_ot ({selectedOtCodes.size} selected)
+                Overtime Types ({selectedOtCodes.size} selected)
               </span>
               <input
                 type="text"
                 value={otSearch}
                 onChange={(e) => setOtSearch(e.target.value)}
-                placeholder="Filter OT Code / Description..."
+                // placeholder="Filter OT Code / Description..."
+                placeholder={`Search ...`}
                 className="h-6 w-48 rounded border border-slate-300 bg-white px-2 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-white"
               />
             </div>
             <div className="flex-1 overflow-y-auto max-h-80">
-              <table className="w-full border-collapse text-left text-xs">
+              <table className="w-full border-collapse text-left text-[11px]">
                 <thead className="sticky top-0 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                   <tr>
                     <th className="w-8 p-2 text-center">
@@ -395,8 +500,36 @@ const SearchOvertimeEmployeeSelection = ({ isOpen, payFrequency, onClose }) => {
                         onChange={toggleAllOvertimes}
                       />
                     </th>
-                    <th className="w-32 p-2">OT Code</th>
-                    <th className="p-2">OT Description</th>
+                    {overtimeColumns.map(([key, label]) => (
+                      <th key={key} className={key === "code" ? "w-20 p-2" : "p-2"}>
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(setOtSort, otSort, key)}
+                          className="font-semibold hover:text-blue-600"
+                          aria-label={`Sort by ${label}`}
+                        >
+                          {label}{sortIndicator(otSort, key)}
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className="bg-white dark:bg-slate-800">
+                    <th className="p-1" />
+                    {overtimeColumns.map(([key, label]) => (
+                      <th key={key} className="p-1">
+                        <input
+                          type="text"
+                          value={otColumnFilters[key] || ""}
+                          onChange={(e) =>
+                            setOtColumnFilters((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                          // placeholder={`Filter ${label}`}
+                          placeholder={`Filter ...`}
+                          aria-label={`Filter overtime by ${label}`}
+                          className="h-6 w-full min-w-0 rounded border border-slate-300 bg-white px-1 text-[10px] font-normal dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                        />
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">

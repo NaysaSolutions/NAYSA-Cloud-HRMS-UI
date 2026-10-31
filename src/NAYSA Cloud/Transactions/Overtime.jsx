@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/NAYSA Cloud/Authentication/AuthContext.jsx";
 import { apiClient } from "@/NAYSA Cloud/Configuration/BaseURL.jsx";
 import Header from "@/NAYSA Cloud/Components/Header.jsx";
+import { transactionActionsCellStyle, transactionActionsHeaderStyle, useResizableTableColumns } from "@/NAYSA Cloud/Global/datatable.jsx";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 import DateFormatInput, {
   formatDateToMMDDYYYY,
@@ -54,13 +55,14 @@ const initialHeader = {
   otId: "",
   otNo: "",
   otDate: today,
+  cutoffType: "",
   cutoffFrequency: "",
   cutoffCode: "",
   cutoffName: "",
   cutoffStartDate: today,
   cutoffEndDate: today,
   remarks: "",
-  documentStatus: "D",
+  documentStatus: "",
 };
 
 const getCutoffFrequency = (cutoffType) => {
@@ -69,14 +71,16 @@ const getCutoffFrequency = (cutoffType) => {
     .toUpperCase();
   if (value.startsWith("S")) return "S";
   if (value.startsWith("M")) return "M";
-  return value ? "D" : "";
+  if (value.startsWith("W")) return "W";
+  return "";
 };
 
 const historyFrequencyLabels = {
+  S1: "Semi-Monthly 1", S2: "Semi-Monthly 2",
+  W1: "Weekly 1", W2: "Weekly 2", W3: "Weekly 3", W4: "Weekly 4",
   S: "Semi-Monthly",
   M: "Monthly",
-  D: "Weekly / Daily",
-  W: "Weekly",
+  W: "Weekly / Daily",
 };
 
 const historyFrequencyFields = new Set([
@@ -143,7 +147,7 @@ const formatOvertimeHistory = (history) => {
 
 const createInitialHeader = (companyInfo) => ({
   ...initialHeader,
-  cutoffFrequency: getCutoffFrequency(companyInfo?.cutoffType),
+  cutoffType: getCutoffFrequency(companyInfo?.cutoffType),
 });
 
 const parseResult = (response, fallback = []) => {
@@ -173,7 +177,12 @@ const roundToDecimal = (value, decimals = 2) => {
 
 const computeOtAmount = ({ hourRate, otHours, otMinutes, otRate }) => {
   const hrRate = numeric(hourRate);
-  const totalHours = numeric(otHours) + numeric(otMinutes) / 60;
+  const hours = numeric(otHours);
+  const minutes = numeric(otMinutes);
+  const syncedMinutes = Math.round((hours - Math.floor(hours)) * 60);
+  const totalHours = syncedMinutes === Math.round(minutes)
+    ? hours
+    : hours + minutes / 60;
   const rate = numeric(otRate);
   const rawAmount = hrRate * totalHours * (rate / 100);
   const roundedAmount = roundToDecimal(rawAmount, 2);
@@ -202,8 +211,8 @@ const createRow = (headerDates = {}) => ({
   payGroup: "",
   groupCode: "",
   branchCode: "",
-  departmentCode: "",
   deptCode: "",
+  posCode: "",
 });
 
 const isValidNumberEntry = (field, value) => {
@@ -213,15 +222,29 @@ const isValidNumberEntry = (field, value) => {
   return /^\d*(\.\d{0,4})?$/.test(value);
 };
 
-const normalizeOvertimeMinutes = ({ otHours, otMinutes }) => {
-  const minutes = numeric(otMinutes);
-  if (!Number.isSafeInteger(minutes) || minutes < 0) {
-    return { otHours, otMinutes };
-  }
+const normalizeOvertimeTime = ({ otHours, otMinutes }, sourceField = "otMinutes") => {
+  const hours = Math.max(0, numeric(otHours));
+  const minutes = Math.max(0, numeric(otMinutes));
+  const totalMinutes = Math.round(
+    sourceField === "otHours" ? hours * 60 : Math.floor(hours) * 60 + minutes,
+  );
+
   return {
-    otHours: decimal(numeric(otHours) + Math.floor(minutes / 60)),
-    otMinutes: decimal(minutes % 60),
+    otHours: decimal(totalMinutes / 60),
+    otMinutes: decimal(totalMinutes % 60),
   };
+};
+
+const normalizeOvertimeMinutes = (values) => normalizeOvertimeTime(values, "otMinutes");
+
+const syncOvertimeTime = (values, sourceField) => {
+  const normalized = normalizeOvertimeTime(values, sourceField);
+  if (sourceField === "otHours") {
+    return { ...normalized, otHours: values.otHours };
+  }
+  return numeric(values.otMinutes) < 60
+    ? { ...normalized, otMinutes: values.otMinutes }
+    : normalized;
 };
 
 const normalizeRow = (row, fallbackStart = today, fallbackEnd = today) => {
@@ -250,7 +273,8 @@ const normalizeRow = (row, fallbackStart = today, fallbackEnd = today) => {
     transpoAllow: decimal(row.transpoAllow),
     payGroup: row.payGroup || row.groupCode || "",
     branchCode: row.branchCode || "",
-    departmentCode: row.departmentCode || row.deptCode || "",
+    deptCode: row.deptCode || "",
+    posCode: row.posCode || row.positionCode || "",
   };
 };
 
@@ -264,13 +288,15 @@ const otColumns = [
   ["endDate", "End Date", 130],
   ["otHours", "OT Hrs.", 105],
   ["otMinutes", "OT Mins.", 100],
+  ["hourRate", "Hour Rate", 110],
   ["otRate", "Rate", 105],
   ["mealAllow", "Meal Allow.", 115],
   ["transpoAllow", "Transpo Allow.", 120],
   ["otAmount", "Amount", 120],
   ["payGroup", "Pay Group", 95],
   ["branchCode", "Branch", 90],
-  ["departmentCode", "Dept.", 90],
+  ["deptCode", "Department", 90],
+  ["posCode", "Position", 90],
 ];
 
 const OvertimeTransaction = () => {
@@ -308,7 +334,15 @@ const OvertimeTransaction = () => {
     actions: 80,
   }));
 
-  const isReadOnly = header.documentStatus !== "D";
+  const otColumnDefs = otColumns.map(([key, label, width]) => ({ key, label, width }));
+  const { getColumnStyle, getFrozenColumnStyle, renderResizableHeader, renderHeaderContextMenu } = useResizableTableColumns(otColumnDefs);
+  const frozenKeys = new Set(["ot", "empNo", "empName", "otCode", "otName"]);
+  const frozenColumns = otColumnDefs.map(col => ({ ...col, frozen: frozenKeys.has(col.key) }));
+  const columnCellStyle = (key) => ({
+    ...getColumnStyle(key, otColumnDefs.find(col => col.key === key)?.width || 120),
+    ...(frozenKeys.has(key) ? getFrozenColumnStyle(key, frozenColumns, undefined, { isHeader: false }) : {}),
+  });
+  const isReadOnly = !["", "O", "OPEN"].includes(String(header.documentStatus || "").trim().toUpperCase());
   const status =
     header.documentStatus === "F"
       ? "FINALIZED"
@@ -325,7 +359,7 @@ const OvertimeTransaction = () => {
   const updateHeader = (values) =>
     setHeader((current) => ({ ...current, ...values }));
 
-  const updateRow = (index, values) =>
+  const updateRow = (index, values, timeSource = null, timeBase = null) =>
     setRows((current) =>
       current.map((row, rowIndex) => {
         if (rowIndex !== index) return row;
@@ -336,7 +370,10 @@ const OvertimeTransaction = () => {
           "otMinutes" in values ||
           "otRate" in values
         ) {
-          nextRow.otAmount = computeOtAmount(nextRow);
+          const calculationTime = timeSource
+            ? normalizeOvertimeTime(timeBase || nextRow, timeSource)
+            : nextRow;
+          nextRow.otAmount = computeOtAmount({ ...nextRow, ...calculationTime });
         }
         return nextRow;
       }),
@@ -347,9 +384,8 @@ const OvertimeTransaction = () => {
       apiClient.post("/overtimeTransactions/save", {
         jsonData: {
           ...header,
-          cutoffFrequency: getCutoffFrequency(
-            header.cutoffFrequency || companyInfo?.cutoffType,
-          ),
+          cutoffType: header.cutoffType,
+          cutoffFrequency: header.cutoffFrequency,
           otDate: formatDateToYYYYMMDD(header.otDate),
           cutoffStartDate: formatDateToYYYYMMDD(header.cutoffStartDate),
           cutoffEndDate: formatDateToYYYYMMDD(header.cutoffEndDate),
@@ -406,7 +442,8 @@ const OvertimeTransaction = () => {
         ...initialHeader,
         ...saved,
         cutoffName: saved.cutoffName || prev.cutoffName || "",
-        cutoffFrequency: getCutoffFrequency(saved.cutoffFrequency),
+        cutoffType: saved.cutoffType || getCutoffFrequency(saved.cutoffFrequency),
+        cutoffFrequency: saved.cutoffFrequency,
         otDate: toDisplayDate(saved.otDate),
         cutoffStartDate: nextStart,
         cutoffEndDate: nextEnd,
@@ -485,8 +522,8 @@ const OvertimeTransaction = () => {
         ? current
         : {
             ...current,
-            cutoffFrequency:
-              current.cutoffFrequency ||
+            cutoffType:
+              current.cutoffType ||
               getCutoffFrequency(companyInfo.cutoffType),
           },
     );
@@ -519,8 +556,8 @@ const OvertimeTransaction = () => {
             payGroup: employee.payGroup || employee.groupCode || "",
             groupCode: employee.groupCode || employee.payGroup || "",
             branchCode: employee.branchCode || "",
-            departmentCode: employee.departmentCode || employee.deptCode || "",
             deptCode: employee.deptCode || employee.departmentCode || "",
+            posCode: employee.posCode || employee.positionCode || employee.POS_CODE || employee.POSITION_CODE || "",
             dailyRate,
             hourRate,
             otHours: formattedHours,
@@ -537,12 +574,23 @@ const OvertimeTransaction = () => {
     ]);
   };
 
+  const insertRowAfter = (index) => {
+    if (isReadOnly) return;
+    setRows(current => {
+      const next = [...current];
+      next.splice(index + 1, 0, createRow({ startDate: header.cutoffStartDate, endDate: header.cutoffEndDate }));
+      return next;
+    });
+  };
+
   const removeRow = (index) =>
     setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
 
   const validate = () => {
-    if (!header.otDate || !header.cutoffFrequency)
+    if (!header.otDate || !header.cutoffType || !header.cutoffFrequency)
       return "Transaction Date and Pay Frequency are required.";
+    const allowed = { S: ["S1", "S2", "S3"], M: ["M"], W: ["W1", "W2", "W3", "W4", "W5"] };
+    if (!allowed[header.cutoffType]?.includes(header.cutoffFrequency)) return "Cut-Off Frequency does not match Cut-Off Type.";
     if (!header.cutoffCode) return "Payroll Cut-Off is required.";
     if (!header.cutoffStartDate || !header.cutoffEndDate)
       return "Cut-Off Start Date and End Date are required.";
@@ -634,7 +682,8 @@ const OvertimeTransaction = () => {
         ...initialHeader,
         ...record,
         cutoffName: record.cutoffName || "",
-        cutoffFrequency: getCutoffFrequency(record.cutoffFrequency),
+        cutoffType: record.cutoffType || getCutoffFrequency(record.cutoffFrequency),
+        cutoffFrequency: record.cutoffFrequency,
         otDate: toDisplayDate(record.otDate),
         cutoffStartDate: nextStart,
         cutoffEndDate: nextEnd,
@@ -678,8 +727,8 @@ const OvertimeTransaction = () => {
         if (rowIndex !== index) return row;
         const updated = {
           ...row,
-          ...(field === "otMinutes"
-            ? normalizeOvertimeMinutes(row)
+          ...(field === "otHours" || field === "otMinutes"
+            ? normalizeOvertimeTime(row, field)
             : { [field]: decimal(row[field]) }),
         };
         updated.otAmount = computeOtAmount(updated);
@@ -711,8 +760,17 @@ const OvertimeTransaction = () => {
         onChange={(event) => {
           if (cellReadOnly) return;
           const value = event.target.value.replace(/,/g, "");
-          if (isValidNumberEntry(field, value))
-            updateRow(index, { [field]: value });
+          if (isValidNumberEntry(field, value)) {
+            const isTimeField = field === "otHours" || field === "otMinutes";
+            const canSync = isTimeField && value !== "" && !value.endsWith(".");
+            const timeBase = { ...row, [field]: value };
+            updateRow(
+              index,
+              canSync ? syncOvertimeTime(timeBase, field) : { [field]: value },
+              canSync ? field : null,
+              canSync ? timeBase : null,
+            );
+          }
         }}
         onBlur={() => !cellReadOnly && formatNumberCell(index, field)}
         onKeyDown={(event) => {
@@ -731,17 +789,27 @@ const OvertimeTransaction = () => {
 
   const updateReplicateValue = (field, value) => {
     const normalized = String(value || "").replace(/,/g, "");
-    if (isValidNumberEntry(field, normalized))
-      setReplicateValues((current) => ({ ...current, [field]: normalized }));
+    if (isValidNumberEntry(field, normalized)) {
+      const isTimeField = field === "otHours" || field === "otMinutes";
+      const canSync = isTimeField && normalized !== "" && !normalized.endsWith(".");
+      setReplicateValues((current) => ({
+        ...current,
+        ...(canSync
+          ? syncOvertimeTime({ ...current, [field]: normalized }, field)
+          : { [field]: normalized }),
+      }));
+    }
   };
 
-  const formatReplicateMinutes = () => {
+  const formatReplicateTime = (field) => {
     if (isReadOnly || !rows.length) return;
     setReplicateValues((current) => ({
       ...current,
-      ...normalizeOvertimeMinutes(current),
+      ...normalizeOvertimeTime(current, field),
     }));
   };
+
+  const formatReplicateMinutes = () => formatReplicateTime("otMinutes");
 
   const replicateDateToRows = async (headerField, rowField, labelName) => {
     if (!rows.length)
@@ -777,8 +845,9 @@ const OvertimeTransaction = () => {
         "Details Required",
         "Add details before applying Overtime Hrs./Mins.",
       );
-    const { otHours: hrs, otMinutes: mins } = normalizeOvertimeMinutes(replicateValues);
-    formatReplicateMinutes();
+    const normalizedTime = normalizeOvertimeTime(replicateValues, "otHours");
+    const { otHours: hrs, otMinutes: mins } = normalizedTime;
+    setReplicateValues((current) => ({ ...current, ...normalizedTime }));
     const confirmation = await useSwalProceedConfirm(
       "Apply Overtime Hrs. / Mins.?",
       `Apply ${hrs} Hrs and ${mins} Mins to all rows?`,
@@ -1014,20 +1083,22 @@ const OvertimeTransaction = () => {
                   label="Pay Frequency"
                   required
                   type="select"
-                  value={header.cutoffFrequency}
+                  value={header.cutoffType}
                   options={[
                     { value: "S", label: "Semi-Monthly" },
                     { value: "M", label: "Monthly" },
-                    { value: "D", label: "Weekly / Daily" },
+                    { value: "W", label: "Weekly" },
                   ]}
                   placeholder="Select Pay Frequency"
                   disabled={isReadOnly}
                   hideClearButton
                   onChange={(value) =>
                     updateHeader({
-                      cutoffFrequency: value,
+                      cutoffType: value,
+                      cutoffFrequency: "",
                       cutoffCode: "",
                       cutoffName: "",
+                      cutoffStartDate: today, cutoffEndDate: today,
                     })
                   }
                 />
@@ -1155,6 +1226,13 @@ const OvertimeTransaction = () => {
                     disabled={isReadOnly || !rows.length}
                     hideClearButton
                     onChange={(value) => updateReplicateValue("otHours", value)}
+                    onBlur={() => formatReplicateTime("otHours")}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        formatReplicateTime("otHours");
+                      }
+                    }}
                   />
                 </div>
                 <div className="min-w-0 flex-1 [&>div]:!mb-0">
@@ -1286,48 +1364,29 @@ const OvertimeTransaction = () => {
             <div className="global-tran-table-main-sub-div-ui">
               <table
                 className="border-separate border-spacing-0 [&_th]:border-b [&_th]:border-slate-200 [&_td]:border-t-0 [&_td]:border-l-0 [&_td]:border-r [&_td]:border-b [&_td]:border-slate-200 [&_tr>td:first-child]:border-l"
-                style={{
-                  tableLayout: "fixed",
-                  width: otColumns.reduce(
-                    (sum, [key]) => sum + otWidths[key],
-                    otWidths.actions,
-                  ),
-                }}
+                style={{ tableLayout: "fixed", minWidth: "max-content" }}
               >
-                <colgroup>
-                  {otColumns.map(([key]) => (
-                    <col key={key} style={{ width: otWidths[key] }} />
-                  ))}
-                  <col style={{ width: otWidths.actions }} />
-                </colgroup>
+
                 <thead className="global-tran-thead-div-ui">
                   <tr>
-                    {otColumns.map(([key, label]) =>
-                      resizeHeader(key, label, otWidths, setOtWidths),
-                    )}
-                    {resizeHeader(
-                      "actions",
-                      "Actions",
-                      otWidths,
-                      setOtWidths,
-                      "sticky top-0 right-0 bg-blue-100 dark:bg-blue-900",
-                    )}
+                    {otColumnDefs.map(col => renderResizableHeader(col.label, col.key, col.width, { orderedColumns: frozenColumns }))}
+                    <th className="global-tran-th-ui sticky top-0 right-0 bg-blue-100 dark:bg-blue-900" style={transactionActionsHeaderStyle}>Actions</th>
                   </tr>
                 </thead>
                 <tbody className="relative">
                   {rows.map((row, index) => (
                     <tr key={row.groupId} className="global-tran-tr-ui">
-                      <td className="global-tran-td-ui text-center">
+                      <td style={columnCellStyle("ot")} className="global-tran-td-ui text-center">
                         {String(index + 1).padStart(4, "0")}
                       </td>
-                      <td className="global-tran-td-ui">
+                      <td style={columnCellStyle("empNo")} className="global-tran-td-ui">
                         {lookupCell(row, index, "employee")}
                       </td>
-                      <td className="global-tran-td-ui">{row.empName}</td>
-                      <td className="global-tran-td-ui">
+                      <td style={columnCellStyle("empName")} className="global-tran-td-ui">{row.empName}</td>
+                      <td style={columnCellStyle("otCode")} className="global-tran-td-ui">
                         {lookupCell(row, index, "ot")}
                       </td>
-                      <td className="global-tran-td-ui">{row.otName}</td>
+                      <td style={columnCellStyle("otName")} className="global-tran-td-ui">{row.otName}</td>
                       <td className="global-tran-td-ui">
                         {dateCell(row, index, "startDate")}
                       </td>
@@ -1339,6 +1398,9 @@ const OvertimeTransaction = () => {
                       </td>
                       <td className="global-tran-td-ui">
                         {numberCell(row, index, "otMinutes")}
+                      </td>
+                      <td className="global-tran-td-ui">
+                        {numberCell(row, index, "hourRate", true)}
                       </td>
                       <td className="global-tran-td-ui">
                         {numberCell(row, index, "otRate", true)}
@@ -1353,22 +1415,23 @@ const OvertimeTransaction = () => {
                         {numberCell(row, index, "otAmount", true)}
                       </td>
                       <td className="global-tran-td-ui text-center">
-                        {row.payGroup || row.groupCode || ""}
+                        {row.groupCode || ""}
                       </td>
                       <td className="global-tran-td-ui text-center">
                         {row.branchCode || ""}
                       </td>
                       <td className="global-tran-td-ui text-center">
-                        {row.departmentCode || row.deptCode || ""}
+                        {row.deptCode || ""}
+                      </td>
+                      <td className="global-tran-td-ui text-center">
+                        {row.posCode || ""}
                       </td>
                       <td
                         className="global-tran-td-ui text-center sticky right-0 bg-white dark:bg-black"
-                        style={{
-                          width: otWidths.actions,
-                          minWidth: otWidths.actions,
-                        }}
+                        style={transactionActionsCellStyle}
                       >
                         <div className="flex items-center justify-center gap-1">
+                          {!isReadOnly && (<button type="button" onClick={() => insertRowAfter(index)} className="global-tran-td-button-add-ui" title="Insert row below"><FontAwesomeIcon icon={faPlus} /></button>)}
                           {!isReadOnly && (
                             <button
                               type="button"
@@ -1384,6 +1447,7 @@ const OvertimeTransaction = () => {
                   ))}
                 </tbody>
               </table>
+              {renderHeaderContextMenu?.()}
             </div>
           </div>
 
@@ -1392,7 +1456,7 @@ const OvertimeTransaction = () => {
             <div className="global-tran-tab-footer-button-div-ui">
               <button
                 onClick={() => {
-                  if (!header.cutoffFrequency) {
+                  if (!header.cutoffType || !header.cutoffFrequency) {
                     return useSwalValidationAlert({
                       title: "Pay Frequency Required",
                       message: "Select Pay Frequency first.",
@@ -1455,7 +1519,7 @@ const OvertimeTransaction = () => {
       {/* Lookup Modals */}
       <SearchCutoffRef
         isOpen={lookup.type === "cutoff"}
-        payFrequency={header.cutoffFrequency}
+        payFrequency={String(header.cutoffType || "").trim().toUpperCase()}
         onClose={(selected) => {
           if (selected) {
             updateHeader({
@@ -1465,8 +1529,9 @@ const OvertimeTransaction = () => {
                 selected.cutoffStartDate || header.cutoffStartDate || today,
               cutoffEndDate:
                 selected.cutoffEndDate || header.cutoffEndDate || today,
-              ...(selected.cutoffFreq
-                ? { cutoffFrequency: selected.cutoffFreq }
+              ...(selected.cutoffType
+                ? { cutoffType: getCutoffFrequency(selected.cutoffType),
+                    cutoffFrequency: selected.cutoffFrequency || selected.cutoffFreq || "" }
                 : {}),
             });
           }
@@ -1489,9 +1554,8 @@ const OvertimeTransaction = () => {
               payGroup: selected.payGroup || selected.groupCode || "",
               groupCode: selected.groupCode || selected.payGroup || "",
               branchCode: selected.branchCode || "",
-              departmentCode:
-                selected.departmentCode || selected.deptCode || "",
               deptCode: selected.deptCode || selected.departmentCode || "",
+              posCode: selected.posCode || selected.positionCode || "",
               dailyRate,
               hourRate,
             });

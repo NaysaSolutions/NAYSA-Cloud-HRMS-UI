@@ -1168,9 +1168,9 @@ export default function RefEmployee() {
           {/* Photo panel and record summary */}
           <div className="grid gap-4 p-4 lg:grid-cols-[245px_minmax(0,1fr)]">
             <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-gray-800">
-              <h2 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Employee Photo</h2>
+              {/* <h2 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Employee Photo</h2> */}
               <button type="button" onClick={() => photoInputRef.current?.click()}
-                className="group relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-6xl font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="group relative flex aspect-[6/7] w-full items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-6xl font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 title="Upload or change employee photo" aria-label="Upload or change employee photo">
                 {showPhoto
                   ? <img src={photoSrc} alt={`${name || "Employee"} photo`} className="h-full w-full object-cover" onError={() => setBrokenPhoto(photoSrc)} />
@@ -1193,7 +1193,7 @@ export default function RefEmployee() {
                   </button>
                 )}
               </div>
-              <p className="mt-2 text-center text-[11px] text-slate-500 dark:text-slate-400">JPG, PNG, or WebP · Max 5 MB</p>
+              {/* <p className="mt-2 text-center text-[11px] text-slate-500 dark:text-slate-400">JPG, PNG, or WebP · Max 5 MB</p> */}
               {photoFile && <p className="mt-1 truncate text-center text-[11px] text-blue-600" title={photoFile.name}>{photoFile.name} (pending save)</p>}
             </section>
 

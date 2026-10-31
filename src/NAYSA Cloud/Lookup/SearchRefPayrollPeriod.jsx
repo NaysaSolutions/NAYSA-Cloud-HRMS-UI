@@ -9,7 +9,8 @@ import { useSwalErrorAlertAPI as showErrorAlert } from "@/NAYSA Cloud/Global/beh
 const columns = [
   { key: "code", label: "Cut-Off Code", width: "w-[16%]" },
   { key: "description", label: "Description", width: "w-[30%]" },
-  { key: "cutoffFreq", label: "Freq", width: "w-[14%]" },
+  { key: "cutoffType", label: "Type", width: "w-[14%]" },
+  { key: "cutoffFreq", label: "Frequency", width: "w-[14%]" },
   { key: "cutoffStartDate", label: "Start Date", width: "w-[20%]" },
   { key: "cutoffEndDate", label: "End Date", width: "w-[20%]" },
 ];
@@ -37,7 +38,6 @@ const normalizeFrequency = (freq) => {
   if (val.startsWith("S")) return "S";
   if (val.startsWith("M")) return "M";
   if (val.startsWith("W")) return "W";
-  if (val.startsWith("D")) return "D";
   return val;
 };
 
@@ -86,7 +86,7 @@ const SearchRefPayrollPeriod = ({ isOpen, payFrequency, onClose }) => {
 
         const normalized = items.map((item) => {
           const rawFrequency = String(
-            item.cutoffFreq || item.cutoffFrequency || item.frequency || item.CUTOFF_FREQ || item.FREQUENCY || "",
+            item.cutoffType || "",
           ).trim();
 
           return {
@@ -94,8 +94,8 @@ const SearchRefPayrollPeriod = ({ isOpen, payFrequency, onClose }) => {
           description: String(
             item.description || item.cutoffName || item.CUTOFF_NAME || "",
           ).trim(),
-          cutoffFreq: normalizeFrequency(rawFrequency),
-          cutoffFrequency: rawFrequency,
+          cutoffType: item.cutoffType,
+          cutoffFreq: item.cutoffFreq || item.cutoffFrequency || item.CUTOFF_FREQ || "",
           cutoffStartDate: toDisplayDate(
             item.cutoffStartDate || item.cutoffStart || item.startDate || item.CUTOFF_STARTDATE || item.CUTOFF_START,
           ),
@@ -147,7 +147,7 @@ const SearchRefPayrollPeriod = ({ isOpen, payFrequency, onClose }) => {
   const filtered = useMemo(() => {
     const targetFreq = normalizeFrequency(payFrequency);
     const freqFiltered = targetFreq
-      ? cutoffs.filter((c) => !c.cutoffFreq || c.cutoffFreq === targetFreq)
+      ? cutoffs.filter((c) => normalizeFrequency(c.cutoffType || c.cutoffFreq) === targetFreq)
       : cutoffs;
 
     const baseList = freqFiltered.filter((cutoff) =>
@@ -261,6 +261,7 @@ const SearchRefPayrollPeriod = ({ isOpen, payFrequency, onClose }) => {
                   >
                     <td className="break-words px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300">{cutoff.code}</td>
                     <td className="break-words px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.description}</td>
+                    <td className="px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffType}</td>
                     <td className="px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffFreq}</td>
                     <td className="whitespace-nowrap px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffStartDate}</td>
                     <td className="whitespace-nowrap px-4 py-2 text-center text-xs font-medium text-slate-600 dark:text-slate-300">{cutoff.cutoffEndDate}</td>

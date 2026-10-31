@@ -289,7 +289,7 @@ body {
     py-[2px] keeps the row compact while allowing input/button spacing.
     align-middle keeps text, inputs, and buttons vertically centered.
   */
-  @apply h-[32px] min-h-[32px] px-3 py-[2px] border text-[10px] sm:text-[10px] lg:text-xs text-gray-900 whitespace-normal align-middle
+  @apply h-[32px] min-h-[32px] px-3 py-[2px] border text-[10px] sm:text-[10px] lg:text-[11px] text-gray-900 whitespace-normal align-middle
   dark:text-white;
 }
 
