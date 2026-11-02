@@ -8,6 +8,7 @@ import {
   faPlus,
   faTrashAlt,
   faUsers,
+  faUserPlus,
   faCalculator,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "@/NAYSA Cloud/Authentication/AuthContext.jsx";
@@ -19,7 +20,10 @@ import DateFormatInput, {
   formatDateToYYYYMMDD,
 } from "@/NAYSA Cloud/Global/DateFormatInput.jsx";
 import AllTranHistory from "@/NAYSA Cloud/Lookup/SearchGlobalTranHistory.jsx";
+import AllTranDocNo from "@/NAYSA Cloud/Lookup/SearchDocNo.jsx";
 import SearchEmployeeRef from "@/NAYSA Cloud/Lookup/SearchEmployeeRef.jsx";
+import SearchRefED from "@/NAYSA Cloud/Lookup/SearchRefED.jsx";
+import SearchSystemGeneratedEmployeeSelection from "@/NAYSA Cloud/Lookup/SearchSystemGeneratedEmployeeSelection.jsx";
 import SearchCutoffRef from "@/NAYSA Cloud/Lookup/SearchRefPayrollPeriod.jsx";
 import CancelTranModal from "@/NAYSA Cloud/Lookup/SearchCancelRef.jsx";
 import AttachDocumentModal from "@/NAYSA Cloud/Lookup/SearchAttachment.jsx";
@@ -27,14 +31,17 @@ import DocumentSignatories from "@/NAYSA Cloud/Lookup/SearchSignatory.jsx";
 import { LoadingSpinner } from "@/NAYSA Cloud/Global/utilities.jsx";
 import { useHandlePrint } from "@/NAYSA Cloud/Global/report.js";
 import {
-  useSwalErrorAlert,
   useSwalErrorAlertAPI,
   useSwalInfoAlert,
   useSwalProceedConfirm,
   useSwalSuccessAlert,
-  useSwalValidationAlert,
   useSwalshowSaveSuccessDialog,
 } from "@/NAYSA Cloud/Global/behavior.jsx";
+
+// Use the shared compact information toast for all OED field validations.
+// The global useSwalValidationAlert displays a centered modal instead.
+const showOEDValidationAlert = ({ title = "Validation", message = "" }) =>
+  useSwalInfoAlert(title, message);
 
 // FRONTEND API CONTRACT (Laravel controller / SQL procedure are NOT included here):
 // GET  /otherEarningsDeductions/selectionReferences
@@ -45,11 +52,54 @@ import {
 //      result: [{ empNo, empName, dailyRate, hourRate, groupCode, branchCode,
 //                 clientCode, deptCode, posCode, statCode, ... }]
 // POST /otherEarningsDeductions/get       jsonData: { oedId } or { oedNo }
+// POST /otherEarningsDeductions/navigate  jsonData: { oedNo, direction, branchCode }
 // POST /otherEarningsDeductions/save      jsonData: { header fields, rows: [...] }
 // POST /otherEarningsDeductions/post, /cancel
 // POST /otherEarningsDeductions/history
 // Responses follow Overtime.jsx's data.data[0].result envelope.
 // Register docType "OED" with Header/report/history infrastructure as needed.
+
+// OED history configuration: avoids requesting HS column-config rows that are not yet registered.
+// Keys match the JSON fields returned by sproc_PHP_Tran_OtherEarningsDeductions/History.
+const OED_HISTORY_COLUMN_CONFIGS = {
+  OED_Summary: [
+    { key: "docNo", label: "Transaction No.", renderType: "text" },
+    { key: "oedDate", label: "Transaction Date", renderType: "date" },
+    { key: "cutoffCode", label: "Payroll Cut-Off", renderType: "text" },
+    { key: "cutoffName", label: "Cut-Off Description", renderType: "text" },
+    { key: "cutoffFrequency", label: "Frequency", renderType: "text" },
+    { key: "edType", label: "Category", renderType: "text" },
+    { key: "tranType", label: "Tran. Type", renderType: "text" },
+    { key: "employeeCount", label: "Employees", renderType: "number", roundingOff: 0, classNames: "text-right" },
+    { key: "detailCount", label: "Details", renderType: "number", roundingOff: 0, classNames: "text-right" },
+    { key: "totalAmount", label: "Total Amount", renderType: "currency", roundingOff: 2, classNames: "text-right" },
+    { key: "docStatus", label: "Status", renderType: "text" },
+    { key: "remarks", label: "Remarks", renderType: "text" },
+  ],
+  OED_Details: [
+    { key: "docNo", label: "Transaction No.", renderType: "text" },
+    { key: "oedDate", label: "Transaction Date", renderType: "date" },
+    { key: "employeeNo", label: "Employee No.", renderType: "text" },
+    { key: "employeeName", label: "Employee Name", renderType: "text" },
+    { key: "edCode", label: "ED Code", renderType: "text" },
+    { key: "edDescription", label: "ED Description", renderType: "text" },
+    { key: "edType", label: "Category", renderType: "text" },
+    { key: "oedDays", label: "Days", renderType: "number", roundingOff: 2, classNames: "text-right" },
+    { key: "oedHrs", label: "Hours", renderType: "number", roundingOff: 2, classNames: "text-right" },
+    { key: "oedMins", label: "Minutes", renderType: "number", roundingOff: 0, classNames: "text-right" },
+    { key: "oedRate", label: "Rate", renderType: "number", roundingOff: 2, classNames: "text-right" },
+    { key: "amount", label: "Amount", renderType: "currency", roundingOff: 2, classNames: "text-right" },
+    { key: "referenceNo", label: "Reference", renderType: "text" },
+    { key: "branchCode", label: "Branch", renderType: "text" },
+    { key: "payGroup", label: "Pay Group", renderType: "text" },
+    { key: "deptCode", label: "Department", renderType: "text" },
+    { key: "startDate", label: "Start Date", renderType: "date" },
+    { key: "endDate", label: "End Date", renderType: "date" },
+    { key: "payregFlag", label: "Payreg Flag", renderType: "text" },
+    { key: "docStatus", label: "Status", renderType: "text" },
+    { key: "remarks", label: "Remarks", renderType: "text" },
+  ],
+};
 
 const apiRoot = "/otherEarningsDeductions";
 const docType = "OED";
@@ -230,39 +280,6 @@ const extraColumns = [
 ];
 const stickyFields = new Set(["ln", "empNo", "empName", "edCode", "edName"]);
 
-function EdCodePicker({ open, edCodes, edType, onClose }) {
-  const [search, setSearch] = useState("");
-  const filtered = useMemo(() => edCodes.filter((item) =>
-    item.edType === edType && ["Y", "1", "TRUE", "A"].includes(item.active.toUpperCase()) &&
-    `${item.edCode} ${item.edName} ${item.code}`.toLowerCase().includes(search.toLowerCase()),
-  ), [edCodes, edType, search]);
-  useEffect(() => { if (open) setSearch(""); }, [open]);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Earnings and deductions lookup">
-      <div className="w-full max-w-3xl rounded-lg bg-white p-5 shadow-xl dark:bg-slate-900">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">Select {edType === "DED" ? "Deduction" : "Earning"} Code (REF_ED)</h2>
-          <button type="button" onClick={() => onClose(null)} className="rounded px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800">Close</button>
-        </div>
-        <input autoFocus className="mb-3 w-full rounded border border-slate-300 p-2 text-sm dark:bg-slate-800" placeholder="Search code or description" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <div className="max-h-[55vh] overflow-auto rounded border dark:border-slate-700">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800"><tr><th className="p-2">ED Code</th><th className="p-2">Description</th><th className="p-2">Classification</th></tr></thead>
-            <tbody>
-              {filtered.map((ed) => (
-                <tr key={ed.edCode} onDoubleClick={() => onClose(ed)} onClick={() => onClose(ed)} className="cursor-pointer border-t hover:bg-blue-50 dark:hover:bg-slate-800">
-                  <td className="p-2 font-medium">{ed.edCode}</td><td className="p-2">{ed.edName}</td><td className="p-2">{ed.code}</td>
-                </tr>
-              ))}
-              {!filtered.length && <tr><td colSpan={3} className="p-5 text-center text-slate-500">No active reference codes found.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const emptyFilters = {
   groupCode: "", branchCode: "", clientCode: "", deptCode: "",
@@ -361,6 +378,7 @@ const OtherEarningsDeductions = () => {
   const [topTab, setTopTab] = useState("details");
   const [header, setHeader] = useState(() => createInitialHeader(companyInfo));
   const [rows, setRows] = useState([]);
+  const [enableCopyFunction, setEnableCopyFunction] = useState(false);
   const [catalog, setCatalog] = useState([]);
   const [catalogError, setCatalogError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -369,12 +387,14 @@ const OtherEarningsDeductions = () => {
   const [showCancel, setShowCancel] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const [showSignatory, setShowSignatory] = useState(false);
+  const [showDocNoLookup, setShowDocNoLookup] = useState(false);
+  const snapshotRef = useRef(null);
   const [noReprints, setNoReprints] = useState(0);
   const [apply, setApply] = useState({
     oedDays: "0.00", oedHrs: "0.00", oedRate: "0.00", amount: "0.00",
   });
   const [widths, setWidths] = useState(() => Object.fromEntries(
-    [...tableColumns, ...extraColumns, ["actions", "Actions", 85]].map(([key, , width]) => [key, width]),
+    [...tableColumns, ...extraColumns, ["actions", "Actions", 112]].map(([key, , width]) => [key, width]),
   ));
   const shownColumns = [...tableColumns, ...extraColumns];
   const isReadOnly = !["D", "OPEN", "O", ""].includes(String(header.documentStatus || "D").toUpperCase());
@@ -385,7 +405,10 @@ const OtherEarningsDeductions = () => {
   const updateHeader = (values) => setHeader((old) => ({ ...old, ...values }));
   const updateRow = (index, values) => setRows((old) => old.map((item, i) => i === index ? ({ ...item, ...values }) : item));
   const reset = () => {
-    setHeader(createInitialHeader(companyInfo)); setRows([]); setSelectedEd(null);
+    const emptyHeader = createInitialHeader(companyInfo);
+    snapshotRef.current = JSON.stringify({ header: emptyHeader, rows: [] });
+    setHeader(emptyHeader); setRows([]); setSelectedEd(null);
+    setShowDocNoLookup(false);
     setNoReprints(0); setTopTab("details");
     setApply({ oedDays: "0.00", oedHrs: "0.00", oedRate: "0.00", amount: "0.00" });
   };
@@ -427,9 +450,24 @@ const OtherEarningsDeductions = () => {
       return next;
     });
   };
+  const copyDetailRow = (index) => {
+    if (isReadOnly || !enableCopyFunction) return;
+    setRows((current) => {
+      const source = current[index];
+      if (!source) return current;
+      const copied = {
+        ...source,
+        groupId: makeGroupId(),
+        lineNo: 0,
+      };
+      const next = [...current];
+      next.splice(index + 1, 0, copied);
+      return next;
+    });
+  };
   const addEmployees = (employees) => {
     if (!selectedEd) {
-      useSwalValidationAlert({ title: "Earning / Deduction Required", message: "Select an Earning / Deduction Code first." });
+      showOEDValidationAlert({ title: "Earning / Deduction Required", message: "Select an Earning / Deduction Code first." });
       return;
     }
     setRows((old) => {
@@ -444,9 +482,58 @@ const OtherEarningsDeductions = () => {
       return [...old, ...additions];
     });
   };
+  // System Generated multi-selection returns both employees and REF_ED codes.
+  // Preserve current rows, match the selected header category and avoid duplicate
+  // employee/code pairs (the same behavior used by Add / Generate).
+  const addSystemGeneratedSelection = (selection) => {
+    if (!selection || isReadOnly) return;
+
+    const employees = (selection.employees || [])
+      .map(normalizeEmployee)
+      .filter((employee) => employee.empNo);
+    const requestedCodes = [...new Set((selection.edCodes || [])
+      .map((item) => textValue(item, "code", "edCode", "ED_CODE", "value").trim())
+      .filter(Boolean))];
+
+    if (!employees.length || !requestedCodes.length) {
+      return showOEDValidationAlert({
+        title: "Selection Required",
+        message: "Select at least one employee and one earnings/deductions code.",
+      });
+    }
+
+    const codes = requestedCodes.map((code) =>
+      catalog.find((item) => item.edCode.toUpperCase() === code.toUpperCase()),
+    );
+    const invalidCodes = requestedCodes.filter((code, i) =>
+      !codes[i] || codes[i].edType !== header.edType ||
+      !["Y", "1", "TRUE", "A"].includes(codes[i].active.toUpperCase()),
+    );
+    if (invalidCodes.length) {
+      return showOEDValidationAlert({
+        title: "Invalid Earning / Deduction Code",
+        message: `The selected codes are unavailable or do not match the ${header.edType === "EARN" ? "Earnings" : "Deductions"} category: ${invalidCodes.join(", ")}.`,
+      });
+    }
+
+    setRows((current) => {
+      const keys = new Set(current.filter((row) => row.empNo && row.edCode)
+        .map((row) => `${row.empNo.toUpperCase()}\u0000${row.edCode.toUpperCase()}`));
+      const additions = [];
+      for (const employee of employees) {
+        for (const ed of codes) {
+          const key = `${employee.empNo.toUpperCase()}\u0000${ed.edCode.toUpperCase()}`;
+          if (keys.has(key)) continue;
+          keys.add(key);
+          additions.push(createRow(header, employee, ed));
+        }
+      }
+      return additions.length ? [...current, ...additions] : current;
+    });
+  };
   const generate = () => {
-    if (!selectedEd) return useSwalValidationAlert({ title: "Code Required", message: "Select an Earning / Deduction Code from REF_ED." });
-    if (!header.cutoffCode) return useSwalValidationAlert({ title: "Payroll Cut-Off Required", message: "Select a Payroll Cut-Off before generating details." });
+    if (!selectedEd) return showOEDValidationAlert({ title: "Code Required", message: "Select an Earning / Deduction Code from REF_ED." });
+    if (!header.cutoffCode) return showOEDValidationAlert({ title: "Payroll Cut-Off Required", message: "Select a Payroll Cut-Off before generating details." });
     if (!rows.some((row) => row.empNo)) return setLookup({ type: "employees", index: null });
     const employees = [...new Map(rows.filter((row) => row.empNo).map((row) => [row.empNo, row])).values()];
     addEmployees(employees);
@@ -524,8 +611,10 @@ const OtherEarningsDeductions = () => {
       remarks: textValue(record, "remarks", "REMARKS"),
     };
     next.cutoffType = getCutoffType(raw(record, "cutoffType", "CUTOFF_TYPE") || next.cutoffFrequency);
+    const loadedRows = (record?.rows || record?.details || []).map((row) => normalizeRow(row, next));
+    snapshotRef.current = JSON.stringify({ header: next, rows: loadedRows });
     setHeader(next);
-    setRows((record?.rows || record?.details || []).map((row) => normalizeRow(row, next)));
+    setRows(loadedRows);
     setSelectedEd(null);
     setTopTab("details");
   };
@@ -544,9 +633,9 @@ const OtherEarningsDeductions = () => {
           else updateHeader({ oedId: id, oedNo: number });
         }
         useSwalshowSaveSuccessDialog(reset, () => setShowSignatory(true), () => {});
-      } catch (error) { useSwalErrorAlert("Save Error", messageFromError(error)); }
+      } catch (error) { useSwalErrorAlertAPI("OED Save Error", error); }
     },
-    onError: (error) => useSwalErrorAlert("Save Error", messageFromError(error)),
+    onError: (error) => useSwalErrorAlertAPI("OED Save Error", error),
   });
   const actionMutation = useMutation({
     mutationFn: ({ mode, password = "", reason = "" }) => apiClient.post(`${apiRoot}/${mode}`, {
@@ -558,43 +647,119 @@ const OtherEarningsDeductions = () => {
         const result = assertSuccess(response);
         updateHeader({ documentStatus: mode === "post" ? "F" : "X" });
         setShowCancel(false);
-        useSwalSuccessAlert("Success!", result.message || "Transaction updated.");
-      } catch (error) { useSwalErrorAlert("Transaction Error", messageFromError(error)); }
+        useSwalSuccessAlert(mode === "post" ? "OED Posted" : "OED Cancelled", result.message || (mode === "post" ? "The transaction was successfully posted." : "The transaction was cancelled."));
+      } catch (error) { useSwalErrorAlertAPI("OED Transaction Error", error); }
     },
     onError: (error) => useSwalErrorAlertAPI("Transaction Error", error),
   });
   const save = () => {
     const error = validate();
-    if (error) return useSwalErrorAlert("Check Other Earnings / Deductions", error);
+    if (error) return showOEDValidationAlert({ title: "OED Validation", message: error });
     saveMutation.mutate();
   };
   const loadTransaction = async (selected) => {
     const oedNo = selected?.docNo || selected?.oedNo || "";
     const oedId = selected?.oedId || "";
-    if (!oedNo && !oedId) return useSwalErrorAlert("Load Error", "Transaction No. is missing.");
+    if (!oedNo && !oedId) return showOEDValidationAlert({ title: "Transaction No. Required", message: "Select a transaction to retrieve." });
     setIsLoading(true);
     try {
       const response = await apiClient.post(`${apiRoot}/get`, { jsonData: oedId ? { oedId } : { oedNo } });
       assertSuccess(response);
       const record = parseResult(response, {});
       if (!record || !(record.oedId || record.oedNo || record.OED_ID || record.OED_NO))
-        return useSwalErrorAlert("Load Error", "The selected transaction was not found.");
+        return useSwalInfoAlert("OED Retrieval", "The selected transaction was not found.");
       applyLoaded(record);
     } catch (error) { useSwalErrorAlertAPI("Load Error", error); }
     finally { setIsLoading(false); }
   };
+  const busy = isLoading || saveMutation.isPending || actionMutation.isPending;
+
+  // F1 document lookup — same SearchDocNo interface as PO. The existing
+  // DOC_SIGN function cannot navigate OED unless OED is registered there.
+  // The Navigate stored-procedure mode uses TRN_OED_HD as its source instead.
+  const openDocNoLookup = () => {
+    if (topTab !== "details" || busy || showDocNoLookup || showCancel || showAttach || showSignatory || lookup.type) return;
+    setShowDocNoLookup(true);
+  };
+
+  useEffect(() => {
+    const onF1 = (event) => {
+      if (event.key !== "F1" || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (topTab !== "details" || showDocNoLookup || showCancel || showAttach || showSignatory || lookup.type) return;
+      event.preventDefault();
+      if (!busy) setShowDocNoLookup(true);
+    };
+    window.addEventListener("keydown", onF1);
+    return () => window.removeEventListener("keydown", onF1);
+  }, [busy, lookup.type, showAttach, showCancel, showDocNoLookup, showSignatory, topTab]);
+
+  const normalizeLookupNo = (value) => {
+    const text = String(value || "").trim().toUpperCase();
+    if (/^\d{1,8}$/.test(text)) return `OED${text.padStart(8, "0")}`;
+    const match = /^OED(\d{1,8})$/.exec(text);
+    return match ? `OED${match[1].padStart(8, "0")}` : text;
+  };
+
+  const retrieveOedFromLookup = async ({ docNo = "", key = "", direction = "", modalClose = false } = {}) => {
+    if (busy) return;
+    const navigation = String(key || direction || "").trim().toUpperCase();
+    const requestedNo = normalizeLookupNo(docNo || (navigation ? header.oedNo : ""));
+    // Warn before replacing an edited or an unsaved entry. Initial records
+    // are only treated as changed when they contain detail rows.
+    const hasUncommittedDetails = rows.length > 0 &&
+      (!snapshotRef.current || snapshotRef.current !== JSON.stringify({ header, rows }));
+    if (hasUncommittedDetails) {
+      const confirm = await useSwalProceedConfirm(
+        "Discard Unsaved Changes?",
+        "Retrieving another OED transaction will replace your unsaved details. Continue?",
+        "Continue", "Stay",
+      );
+      if (!confirm?.isConfirmed) return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.post(`${apiRoot}/navigate`, {
+        jsonData: {
+          oedNo: requestedNo || null,
+          direction: navigation || (requestedNo ? "" : "F"),
+          branchCode: header.branchCode || null,
+        },
+      });
+      assertSuccess(response);
+      const destination = parseResult(response, {});
+      if (!destination?.oedId && !destination?.oedNo) {
+        useSwalInfoAlert("OED Retrieval", navigation ? "No further transaction was found." : "Transaction No. was not found.");
+        return;
+      }
+      const fetched = await apiClient.post(`${apiRoot}/get`, {
+        jsonData: destination.oedId ? { oedId: destination.oedId } : { oedNo: destination.oedNo },
+      });
+      assertSuccess(fetched);
+      const record = parseResult(fetched, {});
+      if (!record?.oedId && !record?.oedNo) throw new Error("The selected transaction could not be loaded.");
+      applyLoaded(record);
+      // SearchDocNo: navigation buttons pass modalClose=true to keep it open.
+      // Manual retrieval (Enter/F5) passes false, so close on success.
+      if (!modalClose) setShowDocNoLookup(false);
+    } catch (error) {
+      useSwalErrorAlertAPI("OED Retrieval Error", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const print = async (mode = "Inline") => {
     const printMode = typeof mode === "string" ? mode : mode?.mode || mode?.printMode || "Inline";
     setShowSignatory(false);
-    if (!header.oedId) return useSwalErrorAlert("Print Error", "Save the transaction first.");
+    if (!header.oedId) return useSwalInfoAlert("OED Print", "Save the transaction before printing.");
     setIsLoading(true);
     try {
       if (printMode === "Final") setNoReprints(1);
       await useHandlePrint(header.oedId, docType, printMode, user?.USER_CODE || "ADMIN");
-    } catch (error) { useSwalErrorAlert("Print Error", messageFromError(error)); }
+    } catch (error) { useSwalErrorAlertAPI("OED Print Error", error); }
     finally { setIsLoading(false); }
   };
-  const busy = isLoading || saveMutation.isPending || actionMutation.isPending;
 
   const replicate = async (fields, label) => {
     if (!rows.length) return useSwalInfoAlert("Details Required", "Add employees before applying values to all.");
@@ -744,7 +909,15 @@ const OtherEarningsDeductions = () => {
           showBIRForm={false} showCopyForm={false} disableRouteNavigation
           onDetails={() => setTopTab("details")} onHistory={() => setTopTab("history")}
           onSave={save} onReset={reset} onPrint={() => setShowSignatory(true)}
-          onPost={() => actionMutation.mutate({ mode: "post" })}
+          onPost={async () => {
+            if (busy || !header.oedId || isReadOnly) return;
+            const result = await useSwalProceedConfirm(
+              "Post OED Transaction?",
+              `Post transaction ${header.oedNo || ""}? Once posted, its details can no longer be edited.`,
+              "Yes, Post", "Cancel"
+            );
+            if (result?.isConfirmed) actionMutation.mutate({ mode: "post" });
+          }}
           onCancel={() => setShowCancel(true)} onAttach={() => setShowAttach(true)}
           isSaveDisabled={isReadOnly || !rows.length || busy}
           isPrintDisabled={!header.oedId || status === "CANCELLED"}
@@ -817,13 +990,23 @@ const OtherEarningsDeductions = () => {
           >
             {/* Column 1: Transaction No., Transaction Date, Pay Frequency */}
             <div className="grid min-w-0 auto-rows-[2.5rem] content-start gap-7">
-              <div className="min-w-0 [&>div]:!mb-0">
+              <div className="relative min-w-0 [&>div]:!mb-0">
                 <FieldRenderer
                   label="Transaction No."
                   type="text"
                   value={header.oedNo || "Auto Generated"}
                   disabled
                 />
+                <button
+                  type="button"
+                  onClick={openDocNoLookup}
+                  disabled={busy}
+                  title="Retrieve Other Earnings/Deductions (F1)"
+                  aria-label="Retrieve OED transaction (F1)"
+                  className="absolute right-1 top-0 flex h-10 w-10 items-center justify-center rounded-r-md border-l border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-blue-300"
+                >
+                  <FontAwesomeIcon icon={faMagnifyingGlass} />
+                </button>
               </div>
               {headerDate("oedDate", "Transaction Date", true)}
               <div className="min-w-0 [&>div]:!mb-0">
@@ -1003,6 +1186,9 @@ const OtherEarningsDeductions = () => {
                       <td className="global-tran-td-ui sticky right-0 z-10 bg-white text-center dark:bg-slate-950">
                         {!isReadOnly && <div className="flex items-center justify-center gap-2">
                           <button type="button" onClick={() => addBlankRow(index)} title="Insert row below" className="global-tran-td-button-add-ui"><FontAwesomeIcon icon={faPlus} /></button>
+                          {enableCopyFunction && (
+                            <button type="button" onClick={() => copyDetailRow(index)} title="Copy this row below (edit duplicate details before saving)" aria-label={`Copy row ${index + 1}`} className="global-tran-td-button-add-ui"><FontAwesomeIcon icon={faClone} /></button>
+                          )}
                           <button type="button" onClick={() => setRows((old) => old.filter((_, i) => i !== index))} title="Delete row" className="global-tran-td-button-delete-ui"><FontAwesomeIcon icon={faTrashAlt} /></button>
                         </div>}
                       </td>
@@ -1019,21 +1205,26 @@ const OtherEarningsDeductions = () => {
                 type="button"
                 className="global-tran-tab-footer-button-add-ui"
                 disabled={isReadOnly}
+                title="Select employees and REF_ED codes using the System Generated lookup"
                 onClick={() => {
-                  if (!header.cutoffType) return useSwalValidationAlert({
+                  if (!header.cutoffType) return showOEDValidationAlert({
                     title: "Pay Frequency Required", message: "Select Pay Frequency first.",
                   });
-                  if (!header.cutoffCode) return useSwalValidationAlert({
+                  if (!header.cutoffCode) return showOEDValidationAlert({
                     title: "Payroll Cut-Off Required", message: "Select Payroll Cut-Off first.",
                   });
-                  if (!selectedEd) return useSwalValidationAlert({
-                    title: "ED Code Required", message: "Select an Earning or Deduction Code first.",
-                  });
-                  setLookup({ type: "employees", index: null });
+                  if (!catalog.some((item) => item.edType === header.edType &&
+                    ["Y", "1", "TRUE", "A"].includes(item.active.toUpperCase()))) {
+                    return showOEDValidationAlert({
+                      title: "Reference Codes Not Available",
+                      message: "No active REF_ED codes are available for the selected category.",
+                    });
+                  }
+                  setLookup({ type: "systemEmployees", index: null });
                 }}
               >
-                <FontAwesomeIcon icon={faPlus} className="mr-2" />
-                Add
+                <FontAwesomeIcon icon={faUserPlus} className="mr-2" />
+                Select Multiple Employees
               </button>
               <button
                 type="button"
@@ -1054,6 +1245,16 @@ const OtherEarningsDeductions = () => {
                 <FontAwesomeIcon icon={faCalculator} className="mr-2" />
                 Re-Compute Details
               </button>
+              <label className="ml-2 inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={enableCopyFunction}
+                  onChange={(event) => setEnableCopyFunction(event.target.checked)}
+                  disabled={isReadOnly}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                Enable Copy Function
+              </label>
             </div>
             <div className="global-tran-tab-footer-total-main-div-ui grid grid-cols-2 gap-x-4 gap-y-1">
               {[
@@ -1079,7 +1280,7 @@ const OtherEarningsDeductions = () => {
             endpoint={`${apiRoot}/history`} cacheKey="OtherEarningsDeductionsHistory"
             activeTabKey="OED_Summary" status="All"
             onRowDoubleClick={loadTransaction} historyExportName="Other Earnings and Deductions"
-            amountDecimals={2} />
+            amountDecimals={2} columnConfigOverrides={OED_HISTORY_COLUMN_CONFIGS} />
         </QueryClientProvider>
       </div>
       <SearchCutoffRef isOpen={lookup.type === "cutoff"} payFrequency={header.cutoffType}
@@ -1101,8 +1302,21 @@ const OtherEarningsDeductions = () => {
         }
         setLookup({ type: "", index: null });
       }} />
-      <EdCodePicker open={lookup.type === "ed"} edCodes={catalog} edType={header.edType}
+      <SearchRefED isOpen={lookup.type === "ed"} edCodes={catalog} edType={header.edType}
         onClose={(selected) => { selectEd(selected, lookup.index); setLookup({ type: "", index: null }); }} />
+      <SearchSystemGeneratedEmployeeSelection
+        isOpen={lookup.type === "systemEmployees"}
+        payFrequency={header.cutoffType}
+        cutoffCode={header.cutoffCode}
+        allowedEdCodes={catalog
+          .filter((item) => item.edType === header.edType &&
+            ["Y", "1", "TRUE", "A"].includes(item.active.toUpperCase()))
+          .map((item) => item.edCode)}
+        onClose={(selection) => {
+          if (selection) addSystemGeneratedSelection(selection);
+          setLookup({ type: "", index: null });
+        }}
+      />
       <EmployeeBulkPicker open={lookup.type === "employees"} payFrequency={header.cutoffType}
         cutoffCode={header.cutoffCode} onClose={(selected) => {
           if (selected) addEmployees(selected);
@@ -1116,6 +1330,23 @@ const OtherEarningsDeductions = () => {
         DocumentID: header.oedId, DocumentName: "Other Earnings & Deductions",
         DocumentNo: header.oedNo, viewOnly: status === "CANCELLED",
       }} onClose={() => setShowAttach(false)} />}
+      {showDocNoLookup && (
+        <AllTranDocNo
+          isOpen={showDocNoLookup}
+          docNo={header.oedNo || ""}
+          params={{
+            docType,
+            documentTitle: "Other Earnings and Deductions",
+            branchCode: header.branchCode || "",
+            branchName: header.branchCode || "All Branches",
+            fieldNo: "oedNo",
+            retrieveOnly: true,
+          }}
+          onRetrieve={retrieveOedFromLookup}
+          onResponse={{ documentNo: header.oedNo || "" }}
+          onClose={() => setShowDocNoLookup(false)}
+        />
+      )}
       {showSignatory && <DocumentSignatories isOpen={showSignatory} params={{
         noReprints, documentID: header.oedId, docType, docNo: header.oedNo,
       }} onClose={print} onCancel={() => setShowSignatory(false)} />}
