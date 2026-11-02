@@ -406,7 +406,7 @@ const SearchAttachment = ({ isOpen, onClose, params }) => {
         {/* Transaction Info (Payee Code & Payee Name ONLY) */}
         <div className="p-4 m-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-sm rounded-lg grid sm:grid-cols-3 gap-4 shadow-sm">
           <p className="flex flex-col">
-            <span className="font-bold text-[10px] text-gray-500 uppercase tracking-widest">{CodeLabel || "Branch Name"}</span>
+            <span className="font-bold text-[10px] text-gray-500 uppercase tracking-widest">Branch Name</span>
             <span className="text-blue-700 dark:text-blue-400 font-semibold">{finalBranchName}</span>
           </p>
           <p className="flex flex-col">

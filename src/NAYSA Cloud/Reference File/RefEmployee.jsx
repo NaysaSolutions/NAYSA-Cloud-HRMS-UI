@@ -6,11 +6,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus, faSave, faUndo, faTrashAlt, faEdit, faUser, faBriefcase, faMoneyBillWave,
   faLandmark, faCalendarDays, faShieldHalved, faPeopleGroup, faTriangleExclamation, faAddressCard,
-  faList, faCamera, faEnvelope, faPhone, faSearch, faTimes,
+  faList, faCamera, faEnvelope, faPhone, faSearch, faTimes, faPaperclip,
 } from "@fortawesome/free-solid-svg-icons";
 import ButtonBar from "@/NAYSA Cloud/Global/ButtonBar.jsx";
 import FieldRenderer from "@/NAYSA Cloud/Global/FieldRenderer.jsx";
 import SearchGlobalReferenceTable from "@/NAYSA Cloud/Lookup/SearchGlobalReferenceTable";
+import SearchAttachment from "@/NAYSA Cloud/Lookup/SearchAttachment.jsx";
+import { usePagePermission } from "@/NAYSA Cloud/Global/usePagePermission.js";
 import AreaLookupModal from "@/NAYSA Cloud/Lookup/SearchRefArea";
 import BranchLookupModal from "@/NAYSA Cloud/Lookup/SearchRefBranch";
 import BankLookupModal from "@/NAYSA Cloud/Lookup/SearchRefBank";
@@ -456,12 +458,14 @@ const relationFields = (p) => [
 export default function RefEmployee() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { canEdit: canEditAttachments } = usePagePermission({ componentKey: "RefEmployee", menuName: "Employee Masterdata" });
 
   const [viewTab, setViewTab] = useState("employee");
   const [tab, setTab] = useState(TABS[0].id);
   const [employee, setEmployee] = useState(blankEmployee);
   const [details, setDetails] = useState(emptyDetails);
   const [selected, setSelected] = useState(null);
+  const [showAttachments, setShowAttachments] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [showAreaModal, setShowAreaModal] = useState(false);
@@ -492,6 +496,7 @@ export default function RefEmployee() {
   const reset = useCallback(() => {
     setEmployee(blankEmployee); setDetails(emptyDetails);
     setSelected(null); setTab(TABS[0].id); setDirty(false); setShowErrors(false);
+    setShowAttachments(false);
     setLookupNames({});
     setPhotoFile(null); setPhotoPreview("");
     if (photoInputRef.current) photoInputRef.current.value = "";
@@ -1157,7 +1162,10 @@ export default function RefEmployee() {
               { key: "add", label: "Add", icon: faPlus, onClick: () => { if (!confirmDiscard()) return; reset(); setViewTab("employee"); } },
               { key: "save", label: "Save", icon: faSave, onClick: handleSave, disabled: save.isPending || viewTab !== "employee" },
               { key: "reset", label: "Reset", icon: faUndo, onClick: () => { if (confirmDiscard()) reset(); }, disabled: viewTab !== "employee" },
-              ...(selected && viewTab === "employee" ? [{ key: "delete", label: "Delete", icon: faTrashAlt, onClick: () => handleDelete({ empNo: employee.empNo }), disabled: deleteEmployee.isPending }] : []),
+              ...(selected && viewTab === "employee" ? [
+                { key: "delete", label: "Delete", icon: faTrashAlt, onClick: () => handleDelete({ empNo: employee.empNo }), disabled: deleteEmployee.isPending },
+                { key: "attachments", label: "Attach", icon: faPaperclip, onClick: () => setShowAttachments(true), disabled: save.isPending || deleteEmployee.isPending },
+              ] : []),
             ]} />
           </div>
         </div>
@@ -1312,6 +1320,20 @@ export default function RefEmployee() {
         </section>
       )}
 
+      {showAttachments && selected && <SearchAttachment
+        key={selected}
+        isOpen={showAttachments}
+        onClose={() => setShowAttachments(false)}
+        params={{
+          DocumentID: `EMPLOYEE:${selected}`,
+          BranchName: lookupName("branchCode", "branchName"),
+          CodeLabel: "Employee No.",
+          Code: selected,
+          NameLabel: "Employee Name",
+          Name: fullName(employee),
+          viewOnly: !canEditAttachments,
+        }}
+      />}
       <AreaLookupModal
         isOpen={showAreaModal}
         onClose={(area) => {
