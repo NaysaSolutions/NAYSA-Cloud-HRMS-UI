@@ -85,6 +85,7 @@ export const pageRegistry = {
   BIRAlphalist: lazyPage(() => import("./NAYSA Cloud/Payroll/BIRAlphalist.jsx")),
   Overtime: lazyPage(() => import("./NAYSA Cloud/Transactions/Overtime.jsx")),
   SystemGenerated: lazyPage(() => import("./NAYSA Cloud/Transactions/SystemGenerated.jsx")),
+  OtherEarningsDeductions: lazyPage(() => import("./NAYSA Cloud/Transactions/OtherEarningsDeductions.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),
