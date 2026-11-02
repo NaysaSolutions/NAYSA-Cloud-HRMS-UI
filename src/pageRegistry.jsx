@@ -72,6 +72,7 @@ export const pageRegistry = {
   RefGovtTAX: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefTaxTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtTAX.jsx")),
   RefSSSTable: lazyPage(() => import("./NAYSA Cloud/Reference File/RefGovtSSS.jsx")),
+  OvertimeLedger: lazyPage(() => import("./NAYSA Cloud/Query/OTInq/PayrollOvertimeLedger.jsx")),
 
   //TRANSACTIONS
   Timesheet: lazyPage(() => import("./NAYSA Cloud/Transactions/Timesheet.jsx")),
