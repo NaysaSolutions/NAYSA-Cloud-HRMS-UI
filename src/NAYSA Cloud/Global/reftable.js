@@ -13,6 +13,7 @@ export const reftables = {
 
     // Reference Files
     POS: "Position Codes",
+    EDCodes: "Earnings / Deduction Codes",
     Client: "Client Codes",
     Branch: "Branch Codes",
     PayGroup: "Payroll Group",

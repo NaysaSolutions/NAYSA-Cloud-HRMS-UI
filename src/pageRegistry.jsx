@@ -4,6 +4,13 @@ import { lazy } from "react";
 // backend stores them in menu-routes/menu-items.
 const lazyPage = (loader) => lazy(loader);
 
+// Route aliases retain the component key stored in HS_MENU for access checks.
+export const pageAliases = { RefEDCodes: "RefEDCode" };
+
+const RefEDCodes = lazyPage(() =>
+  import("./NAYSA Cloud/Reference File/RefEDCodes.jsx")
+);
+
 const RefOrganization = lazyPage(() =>
   import("./NAYSA Cloud/Reference File/RefOrganization.jsx")
 );
@@ -55,6 +62,8 @@ export const pageRegistry = {
   RefPosition: lazyPage(() => import("./NAYSA Cloud/Reference File/RefPOS.jsx")),
   RefLeave: lazyPage(() => import("./NAYSA Cloud/Reference File/RefLeave.jsx")),
   RefOvertime: lazyPage(() => import("./NAYSA Cloud/Reference File/RefOvertime.jsx")),
+  RefEDCode: RefEDCodes,
+  RefEDCodes,
   RefEmployeeStatus: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeStatus.jsx")),
   RefClient: lazyPage(() => import("./NAYSA Cloud/Reference File/RefClient.jsx")),
   RefEmployeeGovInfo: lazyPage(() => import("./NAYSA Cloud/Reference File/RefEmployeeGovInfo.jsx")),
@@ -74,7 +83,7 @@ export const pageRegistry = {
   TaxReconciliation: lazyPage(() => import("./NAYSA Cloud/Payroll/TaxReconciliation.jsx")),
   BIRAlphalist: lazyPage(() => import("./NAYSA Cloud/Payroll/BIRAlphalist.jsx")),
   Overtime: lazyPage(() => import("./NAYSA Cloud/Transactions/Overtime.jsx")),
-  OtherEarningsDeductions: lazyPage(() => import("./NAYSA Cloud/Transactions/OtherEarningsDeductions.jsx")),
+  SystemGenerated: lazyPage(() => import("./NAYSA Cloud/Transactions/SystemGenerated.jsx")),
 
   //ACCESS RIGHTS (HRMS)
   UserManagement: lazyPage(() => import("./NAYSA Cloud/Security/UserManagement.jsx")),

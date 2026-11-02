@@ -29,7 +29,7 @@ import {
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { pageRegistry } from "./pageRegistry.jsx";
+import { pageAliases, pageRegistry } from "./pageRegistry.jsx";
 import ErrorBoundary from "./NAYSA Cloud/Components/ErrorBoundary";
 import {
   fetchData,
@@ -88,8 +88,9 @@ const UniversalRegistryRoute = ({ routeRows, loadingMenu }) => {
   const hasRouteRows = normalizedRouteRows.length > 0;
 
   const matchingComponentKey = useMemo(() => {
-    if (paramKey && pageRegistry[paramKey]) {
-      return paramKey;
+    const requestedKey = pageAliases[paramKey] || paramKey;
+    if (requestedKey && pageRegistry[requestedKey]) {
+      return requestedKey;
     }
 
     const currentPath = location.pathname.replace(/\/$/, "") || "/";
@@ -104,7 +105,7 @@ const UniversalRegistryRoute = ({ routeRows, loadingMenu }) => {
       return dbPath === currentPath;
     });
 
-    return dbMatch?.componentKey || null;
+    return pageAliases[dbMatch?.componentKey] || dbMatch?.componentKey || null;
   }, [location.pathname, normalizedRouteRows, paramKey]);
 
   const Component = matchingComponentKey
